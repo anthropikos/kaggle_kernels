@@ -1,0 +1,21 @@
+{
+  "id": "anthonyylee/lstm-tweets",
+  "id_no": 61630563,
+  "title": "LSTM Tweets",
+  "code_file": "lstm-tweets.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": false,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [
+    "gpu"
+  ],
+  "dataset_sources": [],
+  "kernel_sources": [],
+  "competition_sources": [
+    "nlp-getting-started"
+  ],
+  "model_sources": []
+}
