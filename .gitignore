@@ -1,3 +1,4 @@
 input
 **.pyc
 **.__pycache__
+**.egg_info
