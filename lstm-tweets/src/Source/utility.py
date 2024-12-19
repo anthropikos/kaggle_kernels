@@ -1,4 +1,4 @@
-## Various utility functions 
+## Various utility functions
 ## Anthony Lee 2024-12-17
 
 from typing import List, Union, Iterable, Tuple, Dict
@@ -19,9 +19,10 @@ from .data_code import text_to_vector
 # TODO: DONE - Encapsulate the entire data loading into one pipeline
 
 
-BatchedValidationLoss = namedtuple(
-    "batched_validation_loss", ["last_loss", "running_loss"]
-)
+TrainingLoopResult = namedtuple("training_loop_results", ["avg_train_loss", "avg_validation_loss"])
+BatchedValidationLoss = namedtuple("batched_validation_loss", ["last_loss", "running_loss"])
+CheckpointResult = namedtuple("checkpoint", ["model", "optimizer", "training_loss", "validation_loss"])
+BatchedTrainLoss = namedtuple("batched_train_loss", ["last_loss", "running_loss"])
 
 
 def evaluate_validation_loss(
@@ -37,9 +38,7 @@ def evaluate_validation_loss(
     model.train(False)  # Eval mode
 
     with torch.no_grad():
-        for idx_data, (validation_target, validation_data) in enumerate(
-            validation_dataset
-        ):
+        for idx_data, (validation_target, validation_data) in enumerate(validation_dataset):
 
             # Inference
             prediction = model(torch.tensor(validation_data))
@@ -48,17 +47,10 @@ def evaluate_validation_loss(
             loss = criterion(prediction, torch.tensor(validation_target).double())
 
             # Keep track of the loss
-            last_validation_loss = (
-                loss.detach()
-            )  # Solves memory leak - Or use loss.item()
+            last_validation_loss = loss.detach()  # Solves memory leak - Or use loss.item()
             running_validation_loss += last_validation_loss
 
-    return BatchedValidationLoss(
-        last_loss=last_validation_loss, running_loss=running_validation_loss
-    )
-
-
-BatchedTrainLoss = namedtuple("batched_train_loss", ["last_loss", "running_loss"])
+    return BatchedValidationLoss(last_loss=last_validation_loss, running_loss=running_validation_loss)
 
 
 def train_model(
@@ -75,9 +67,7 @@ def train_model(
     model.train(True)  # Training mode
 
     # Training loop
-    for idx_data, (train_target, train_data) in enumerate(
-        tqdm(train_dataset, desc="    Training...", unit="Tweet", miniters=100)
-    ):
+    for idx_data, (train_target, train_data) in enumerate(tqdm(train_dataset, desc="    Training...", unit="Tweet")):
         # if idx_batch == 5: break  # DEBUG
 
         # Forward prop
@@ -88,12 +78,12 @@ def train_model(
         prediction = model(torch.tensor(train_data))
 
         # Calculate loss
-        print(f"type(train_target): {type(train_target)}")
-        temp = torch.tensor(train_target).double().reshape(-1)
-        print(f"prediction: {prediction}")
-        print(f"temp: {temp}, type: {type(temp)}")
-        loss = criterion(prediction, temp)
-        # loss = criterion(prediction, torch.tensor(train_target).double())
+        # print(f"type(train_target): {type(train_target)}")
+        # temp = torch.tensor(train_target).double().reshape(-1)
+        # print(f"prediction: {prediction}")
+        # print(f"temp: {temp}, type: {type(temp)}")
+        # loss = criterion(prediction, temp)
+        loss = criterion(prediction, torch.tensor(train_target).double().reshape(-1))
 
         # Backward prop
         loss.backward()  # Calculate gradients after the loss is aggregated with the reduction strategy
@@ -106,9 +96,7 @@ def train_model(
     return BatchedTrainLoss(last_loss=last_train_loss, running_loss=running_train_loss)
 
 
-def checkpoint_save(
-    model, optimizer, epoch, training_loss, validation_loss, dir_path=None
-) -> Path:
+def checkpoint_save(model, optimizer, epoch, training_loss, validation_loss, dir_path=None) -> Path:
 
     filename = f"checkpoint_epoch_{epoch}.checkpoint"
 
@@ -159,18 +147,12 @@ def checkpoint_load_into_objects(checkpoint) -> tuple:
     model.load_state_dict(checkpoint["model_state_dict"])
 
     # Create and load optimizer state dict
-    optimizer = checkpoint["optimizer_class"](
-        model.parameters()
-    )  # Instantiate using the class name
+    optimizer = checkpoint["optimizer_class"](model.parameters())  # Instantiate using the class name
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
     # Load loss information
     training_loss = checkpoint["training_loss"]
     validation_loss = checkpoint["validation_loss"]
-
-    CheckpointResult = namedtuple(
-        "checkpoint", ["model", "optimizer", "training_loss", "validation_loss"]
-    )
 
     return CheckpointResult(
         model=model,
@@ -180,9 +162,7 @@ def checkpoint_load_into_objects(checkpoint) -> tuple:
     )
 
 
-def plot_train_validation_loss(
-    avg_training_loss: np.ndarray, avg_validation_loss: np.ndarray
-) -> mpl.axes.Axes:
+def plot_train_validation_loss(avg_training_loss: np.ndarray, avg_validation_loss: np.ndarray) -> mpl.axes.Axes:
     assert len(avg_training_loss) == len(
         avg_validation_loss
     ), f"Training loss and validation loss arrays should have the same length, got {len(avg_training_loss)} and {len(avg_validation_loss)}"
@@ -219,9 +199,7 @@ def plot_train_validation_loss(
     return ax
 
 
-def predict_test_data_for_submission(
-    model: torch.nn.Module, df_test: pd.DataFrame, save: bool = None
-) -> List:
+def predict_test_data_for_submission(model: torch.nn.Module, df_test: pd.DataFrame, save: bool = None) -> List:
     """Convenience function to predict for submission."""
     if save is None:
         save = False
