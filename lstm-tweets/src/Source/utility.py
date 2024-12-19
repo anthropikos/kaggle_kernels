@@ -2,6 +2,7 @@
 ## Anthony Lee 2024-12-17
 
 from typing import List, Union, Iterable, Tuple, Dict
+import os
 from pathlib import Path
 from collections import namedtuple
 import numpy as np
@@ -44,7 +45,8 @@ def evaluate_validation_loss(
             prediction = model(torch.tensor(validation_data))
 
             # Calculate loss
-            loss = criterion(prediction, torch.tensor(validation_target).double())
+            validation_target = torch.tensor(validation_target).double().reshape(-1)
+            loss = criterion(prediction, validation_target)
 
             # Keep track of the loss
             last_validation_loss = loss.detach()  # Solves memory leak - Or use loss.item()
@@ -66,24 +68,19 @@ def train_model(
 
     model.train(True)  # Training mode
 
-    # Training loop
-    for idx_data, (train_target, train_data) in enumerate(tqdm(train_dataset, desc="    Training...", unit="Tweet")):
+    # Training loop through each data point
+    # for idx_data, (train_target, train_data) in enumerate(tqdm(train_dataset, desc="    Training...", unit="Tweet")):
+    for idx_data, (train_target, train_data) in tqdm(enumerate(train_dataset), desc="    Training...", unit="Tweet"):
         # if idx_batch == 5: break  # DEBUG
 
         # Forward prop
         model.zero_grad()  # Zero out the graident
         optimizer.zero_grad()
-        # print(f"train_data.shape: {train_data.shape}")  # DEBUG
-        # print(f"train_target: {train_target}")  # DEBUG
         prediction = model(torch.tensor(train_data))
 
         # Calculate loss
-        # print(f"type(train_target): {type(train_target)}")
-        # temp = torch.tensor(train_target).double().reshape(-1)
-        # print(f"prediction: {prediction}")
-        # print(f"temp: {temp}, type: {type(temp)}")
-        # loss = criterion(prediction, temp)
-        loss = criterion(prediction, torch.tensor(train_target).double().reshape(-1))
+        train_target = torch.tensor(train_target).double().reshape(-1)
+        loss = criterion(prediction, train_target)
 
         # Backward prop
         loss.backward()  # Calculate gradients after the loss is aggregated with the reduction strategy
@@ -96,7 +93,7 @@ def train_model(
     return BatchedTrainLoss(last_loss=last_train_loss, running_loss=running_train_loss)
 
 
-def checkpoint_save(model, optimizer, epoch, training_loss, validation_loss, dir_path=None) -> Path:
+def checkpoint_save(model:torch.nn.Module, optimizer:torch.optim.Optimizer, epoch, training_loss, validation_loss, dir_path=None) -> Path:
 
     filename = f"checkpoint_epoch_{epoch}.checkpoint"
 
@@ -104,6 +101,7 @@ def checkpoint_save(model, optimizer, epoch, training_loss, validation_loss, dir
         dir_path = Path.cwd()
     else:
         dir_path = Path(dir_path)
+        os.makedirs(dir_path, exists_ok=True)
 
     file_path = dir_path / Path(filename)
 
@@ -111,9 +109,9 @@ def checkpoint_save(model, optimizer, epoch, training_loss, validation_loss, dir
         "epoch": epoch,
         "training_loss": training_loss,
         "validation_loss": validation_loss,
-        "model_class": model.__class__,
+        "model_class_name": model.__class__.__name__,
         "model_state_dict": model.state_dict(),
-        "optimizer_class": optimizer.__class__,
+        "optimizer_class_name": optimizer.__class__.__name__,
         "optimizer_state_dict": optimizer.state_dict(),
     }
 
@@ -122,44 +120,44 @@ def checkpoint_save(model, optimizer, epoch, training_loss, validation_loss, dir
     return file_path
 
 
-def checkpoint_load(file_path) -> tuple:
-    file_path = Path(file_path)
-    checkpoint = torch.load(file_path, weights_only=False)
+# def checkpoint_load(file_path) -> tuple:
+#     file_path = Path(file_path)
+#     checkpoint = torch.load(file_path, weights_only=False)
 
-    return checkpoint
+#     return checkpoint
 
 
-def checkpoint_load_into_objects(checkpoint) -> tuple:
-    """Use the provided checkpoint to return stateful model and optimizer instances."""
+# def checkpoint_load_into_objects(checkpoint) -> tuple:
+#     """Use the provided checkpoint to return stateful model and optimizer instances."""
 
-    # Checkpoint structure check
-    for key_name in [
-        "model_class",
-        "optimizer_class",
-        "training_loss",
-        "validation_loss",
-    ]:
-        if key_name not in checkpoint.keys():
-            raise KeyError(f"The checkpoint is incorrect, {key_name} is missing")
+#     # Checkpoint structure check
+#     for key_name in [
+#         "model_class",
+#         "optimizer_class",
+#         "training_loss",
+#         "validation_loss",
+#     ]:
+#         if key_name not in checkpoint.keys():
+#             raise KeyError(f"The checkpoint is incorrect, {key_name} is missing")
 
-    # Create and load model state dict
-    model = checkpoint["model_class"]()  # Instantiate using the class name
-    model.load_state_dict(checkpoint["model_state_dict"])
+#     # Create and load model state dict
+#     model = checkpoint["model_class"]()  # Instantiate using the class name
+#     model.load_state_dict(checkpoint["model_state_dict"])
 
-    # Create and load optimizer state dict
-    optimizer = checkpoint["optimizer_class"](model.parameters())  # Instantiate using the class name
-    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+#     # Create and load optimizer state dict
+#     optimizer = checkpoint["optimizer_class"](model.parameters())  # Instantiate using the class name
+#     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
-    # Load loss information
-    training_loss = checkpoint["training_loss"]
-    validation_loss = checkpoint["validation_loss"]
+#     # Load loss information
+#     training_loss = checkpoint["training_loss"]
+#     validation_loss = checkpoint["validation_loss"]
 
-    return CheckpointResult(
-        model=model,
-        optimizer=optimizer,
-        training_loss=training_loss,
-        validation_loss=validation_loss,
-    )
+#     return CheckpointResult(
+#         model=model,
+#         optimizer=optimizer,
+#         training_loss=training_loss,
+#         validation_loss=validation_loss,
+#     )
 
 
 def plot_train_validation_loss(avg_training_loss: np.ndarray, avg_validation_loss: np.ndarray) -> mpl.axes.Axes:

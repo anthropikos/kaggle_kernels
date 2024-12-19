@@ -56,9 +56,7 @@ class SimpleLSTM(torch.nn.Module):
         """
         # Instantiate input layer
         if input_data.dim() != 2:
-            raise ValueError(
-                f"Input data expected to have 2-dimension, got {input_data.dim()}-dimension(s)."
-            )
+            raise ValueError(f"Input data expected to have 2-dimension, got {input_data.dim()}-dimension(s).")
         self.input_size = input_data.shape[1]  # Vectorized encoding size
 
         self.layer_lstm = torch.nn.LSTM(
@@ -77,13 +75,9 @@ class SimpleLSTM(torch.nn.Module):
         # - Output vs h_n: The former only has output for the last LSTM layer, whereas the latter has output for all LSTM layers.
         last_layer_output, (h_n, c_n) = self.layer_lstm(input_data)
         if last_layer_output.dim() == 3:
-            last_layer_output = last_layer_output[
-                :, -1, :
-            ]  # All batches; Last sequence output; hidden size
+            last_layer_output = last_layer_output[:, -1, :]  # All batches; Last sequence output; hidden size
         elif last_layer_output.dim() == 2:
-            last_layer_output = last_layer_output[
-                -1, :
-            ]  # When no batches - Last seq output; hidden size
+            last_layer_output = last_layer_output[-1, :]  # When no batches - Last seq output; hidden size
         else:
             raise ValueError(
                 f"Output of LSTM layer expected to be either 3 or 2 dimensions (got {last_layer_output.dim()} dimensions.)"
