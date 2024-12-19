@@ -101,7 +101,7 @@ def checkpoint_save(model:torch.nn.Module, optimizer:torch.optim.Optimizer, epoc
         dir_path = Path.cwd()
     else:
         dir_path = Path(dir_path)
-        os.makedirs(dir_path, exists_ok=True)
+        os.makedirs(dir_path, exist_ok=True)
 
     file_path = dir_path / Path(filename)
 
