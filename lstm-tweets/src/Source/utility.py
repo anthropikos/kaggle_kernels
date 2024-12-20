@@ -1,6 +1,8 @@
 ## Various utility functions
 ## Anthony Lee 2024-12-17
 
+## TODO: 2024-12-20 Anthony - The functions here need to be refactored into other modules because a module with the name "utility" is too non-descriptive.
+
 from typing import List, Union, Iterable, Tuple, Dict
 import os
 from pathlib import Path
