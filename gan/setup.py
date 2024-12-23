@@ -3,7 +3,7 @@ from os.path import basename, splitext
 from setuptools import find_packages, setup
 
 setup(
-	name = "UNET_GAN",
+	name = "gan",
 	version = "0.1",
     author = "Anthony Lee",
     author_email = "anthony8lee@gmail.com",
