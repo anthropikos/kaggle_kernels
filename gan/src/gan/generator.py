@@ -11,6 +11,12 @@ class Downsampler(nn.Module):
     # - conv2d -> instance-normalizer -> leakyrelu activation
     # - Create an init dunder and a override the forward method
 
+    def __init__(self, filters:int, kernel_size:int, apply_instanceNorm:bool=True):
+       pass 
+
+    def forward(self):
+        pass
+
 class Upsampler(nn.Module):
     pass
 
