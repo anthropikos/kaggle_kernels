@@ -107,12 +107,12 @@ class Generator(nn.Module):
             Downsampler(128), # Output: (batch-size, 128, 32, 32)
             Downsampler(256), # Output: (batch-size, 256, 16, 16)
             Downsampler(512), # Output: (batch-size, 512, 8, 8)
-            Downsampler(1024), # Output: (batch-size, 1024, 4, 4)
-            Downsampler(2048), # Output: (batch-size, 2048, 2, 2)
+            Downsampler(512), # Output: (batch-size, 512, 4, 4)
+            Downsampler(512), # Output: (batch-size, 512, 2, 2)
         ]
 
         self.upsampling_stack = [
-            Upsampler(1024),  # Output: (batch-size, 2048, 4, 4)
+            Upsampler(512), # Output: (batch-size, 1024, 4, 4)
             Upsampler(512), # Output: (batch-size, 1024, 8, 8)
             Upsampler(256), # Output: (batch-size, 512, 16, 16)
             Upsampler(128), # Output: (batch-size, 256, 32, 32)
