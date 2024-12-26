@@ -49,6 +49,7 @@ class Test_Upsampler(unittest.TestCase):
 
 class Test_Generator(unittest.TestCase):
     def test_inputShape_unbatched_greater(self):
+        """Test unbatched input when dimension is greater than 256."""
         input = torch.randint(255, size=(3, 257, 257)).float()
         layer = gan.generator.Generator(Downsampler=gan.generator.Downsampler, Upsampler=gan.generator.Upsampler)
         with self.assertRaises(AttributeError) as cm:
@@ -56,6 +57,7 @@ class Test_Generator(unittest.TestCase):
         return
 
     def test_inputShape_unbatched_lesser(self):
+        """Test unbatched input when dimension is lesser than 256."""
         input = torch.randint(255, size=(3, 255, 255)).float()
         layer = gan.generator.Generator(Downsampler=gan.generator.Downsampler, Upsampler=gan.generator.Upsampler)
         with self.assertRaises(AttributeError) as cm:
@@ -63,6 +65,7 @@ class Test_Generator(unittest.TestCase):
         return
         
     def test_inputShape_batched_greater(self):
+        """Test batched input when dimension is greater than 256."""
         input = torch.randint(255, size=(10, 3, 257, 257)).float()
         layer = gan.generator.Generator(Downsampler=gan.generator.Downsampler, Upsampler=gan.generator.Upsampler)
         with self.assertRaises(AttributeError) as cm:
@@ -70,6 +73,7 @@ class Test_Generator(unittest.TestCase):
         return
     
     def test_inputShape_batched_lesser(self):
+        """Test batched input when dimension is lesser than 256."""
         input = torch.randint(255, size=(10, 3, 255, 255)).float()
         layer = gan.generator.Generator(Downsampler=gan.generator.Downsampler, Upsampler=gan.generator.Upsampler)
         with self.assertRaises(AttributeError) as cm:
