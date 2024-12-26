@@ -17,7 +17,6 @@ class TestDownsampler(unittest.TestCase):
         # Method 2
         with self.assertRaises(RuntimeError) as cm:
             output = layer(input)
-        print(f"Err msg: {cm.exception}")
 
     def test_simple(self):
         self.assertEqual(4, 4)
@@ -47,6 +46,35 @@ class Test_Upsampler(unittest.TestCase):
 
         self.assertEqual(output.size(), (channels, height*2, width*2))
 
+
+class Test_Generator(unittest.TestCase):
+    def test_inputShape_unbatched_greater(self):
+        input = torch.randint(255, size=(3, 257, 257)).float()
+        layer = gan.generator.Generator(Downsampler=gan.generator.Downsampler, Upsampler=gan.generator.Upsampler)
+        with self.assertRaises(AttributeError) as cm:
+            output = layer(input)
+        return
+
+    def test_inputShape_unbatched_lesser(self):
+        input = torch.randint(255, size=(3, 255, 255)).float()
+        layer = gan.generator.Generator(Downsampler=gan.generator.Downsampler, Upsampler=gan.generator.Upsampler)
+        with self.assertRaises(AttributeError) as cm:
+            output = layer(input)
+        return
+        
+    def test_inputShape_batched_greater(self):
+        input = torch.randint(255, size=(10, 3, 257, 257)).float()
+        layer = gan.generator.Generator(Downsampler=gan.generator.Downsampler, Upsampler=gan.generator.Upsampler)
+        with self.assertRaises(AttributeError) as cm:
+            output = layer(input)
+        return
+    
+    def test_inputShape_batched_lesser(self):
+        input = torch.randint(255, size=(10, 3, 255, 255)).float()
+        layer = gan.generator.Generator(Downsampler=gan.generator.Downsampler, Upsampler=gan.generator.Upsampler)
+        with self.assertRaises(AttributeError) as cm:
+            output = layer(input)
+        return
 
 if __name__ == "__main__":
     unittest.main()

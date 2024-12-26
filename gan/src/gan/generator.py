@@ -8,7 +8,7 @@
 ## Reference: 
 ##   - Amy Jang's CycleGAN notebook: https://www.kaggle.com/code/amyjang/monet-cyclegan-tutorial
 
-from typing import Iterable
+from typing import Iterable, Callable
 import torch
 from torch import nn
 import numpy as np
@@ -97,7 +97,7 @@ class Upsampler(nn.Module):
         return output
 
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, Downsampler:Callable, Upsampler:Callable):
         super().__init__()
 
         # Intput size (batch-size, 3, 256, 256)
@@ -131,20 +131,38 @@ class Generator(nn.Module):
                 return torch.cat(layers, 1)
             case _:
                 raise AttributeError(f"Expect input array dimension size of either 3 or 4, got {layers[0].dim()}")
+            
+    def _Generator__input_size_okay(self, input:torch.Tensor) -> bool:
+        """Checks if input dimension is acceptable."""
+        match input.dim():
+            case 3:
+                dim = input.size()
+                if (dim[1]!=256) | (dim[2]!=256):
+                    raise AttributeError(f"Input images have to be 256x256, got {dim[1]}x{dim[2]}")
+            case 4:
+                dim = input.size()
+                if (dim[2]!=256) | (dim[3]!=256):
+                    raise AttributeError(f"Input images have to be 256x256, got {dim[2]}x{dim[3]}")
+            case _:
+                raise AttributeError(f"Expect input dimension size of either 3 or 4, got {input.dim()}")
+            
 
     def forward(self, input:torch.Tensor):
+        self._Generator__input_size_okay(input=input)
 
         # Unet downsampling steps
         skips_holder = []
+        output = input  # Makes it easier to work with
         for idx, downsampling_layer in enumerate(self.downsampling_stack):
-            output = downsampling_layer(input)
+            output = downsampling_layer(output)
             skips_holder.append(output)
 
         # Unet upsampling steps
         # skips_holder = skips_holder[-2::-1]  # Not very Pythonic
         skips_holder = reversed(skips_holder[:-1])
-        for upsampling_layer, skip in zip(self.upsampling_stack, skips_holder):
+        for idx, (upsampling_layer, skip) in enumerate(zip(self.upsampling_stack, skips_holder)):
             output = upsampling_layer(output)
+            print(f"{idx}, output.size(): {output.size()}, skip.size(): {skip.size()}")
             ouptut = self._Generator__channel_concat((skip, output))
 
         # Last upsampling layer (does NOT need to concat)
