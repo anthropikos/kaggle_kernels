@@ -122,7 +122,7 @@ class Generator(nn.Module):
 
         self.final_layer = Upsampler(3)
 
-    def _Generator__channel_concat(self, layers:Iterable[np.ndarray]):
+    def __channel_concat(self, layers:Iterable[np.ndarray]):
         """Concat the ndarray along channel dimension depending on whether input is batched."""
         match layers[0].dim():
             case 3:  # Input is NOT batched thus have ndim of 3
@@ -132,7 +132,7 @@ class Generator(nn.Module):
             case _:
                 raise AttributeError(f"Expect input array dimension size of either 3 or 4, got {layers[0].dim()}")
             
-    def _Generator__input_size_okay(self, input:torch.Tensor) -> bool:
+    def __input_size_okay(self, input:torch.Tensor) -> bool:
         """Checks if input dimension is acceptable."""
         match input.dim():
             case 3:
@@ -148,7 +148,7 @@ class Generator(nn.Module):
             
 
     def forward(self, input:torch.Tensor):
-        self._Generator__input_size_okay(input=input)
+        self.__input_size_okay(input=input)
 
         # Unet downsampling steps
         skips_holder = []
@@ -163,7 +163,7 @@ class Generator(nn.Module):
         for idx, (upsampling_layer, skip) in enumerate(zip(self.upsampling_stack, skips_holder)):
             output = upsampling_layer(output)
             print(f"{idx}, output.size(): {output.size()}, skip.size(): {skip.size()}")
-            ouptut = self._Generator__channel_concat((skip, output))
+            ouptut = self.__channel_concat((skip, output))
 
         # Last upsampling layer (does NOT need to concat)
         output = self.final_layer(ouptut)
