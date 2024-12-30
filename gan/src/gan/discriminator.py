@@ -1,11 +1,14 @@
 # Anthony Lee 2024-12-28
 
 from .generator import Downsampler
+from typing import Callable
 import torch
 from torch import nn
 
 class Discriminator(nn.Module):
-    def __init__(self):
+    def __init__(self, Downsampler:Callable=Downsampler):
+        """Discriminator model; inspired by UNET architecture."""
+
         super().__init__()
 
     def __input_size_okay(self, input:torch.Tensor) -> bool:
@@ -25,16 +28,13 @@ class Discriminator(nn.Module):
     def forward(self, input:torch.Tensor):
         self.__input_size_okay(input=input)
 
-        # TODO: Check the outputs of the downsamplers
-        # TODO: Check the outputs of of each layers in the Generators
-
-        output = input
-        output = Downsampler(filters=64, kernel_size=4, apply_instanceNorm=False)(output)  # (batch-size, 128, 128, 64)
-        output = Downsampler(128, 4)(output)  # output: (batch-size, 128, 64, 64)
-        output = Downsampler(256, 4)(output)  # output: (batch_size, 256, 32, 32)
-        output = nn.ZeroPad2d(padding=1)(output)  # output: (batch-size, 256, 34, 34)
-        output = Downsampler(512, 4, stride=1, padding=0) # IN and ReLU included
-        output = nn.ZeroPad1d(padding=1)(output)  # output: (batch-size, 512, 31, 31)
-        output = Downsampler(1, 4, stride=1, padding=0)(output)
+        output = input  # So that the same variable `output` can be used repeatedly
+        output = Downsampler(filters=64, kernel_size=4, apply_instanceNorm=False)(output)     # output: (batch-size, 64, 128, 128)
+        output = Downsampler(128, 4)(output)                                                  # output: (batch-size, 128, 64, 64)
+        output = Downsampler(256, 4)(output)                                                  # output: (batch_size, 256, 32, 32)
+        output = nn.ZeroPad2d(padding=1)(output)                                              # output: (batch-size, 256, 34, 34)
+        output = Downsampler(512, 4, stride=1, padding=0)(output)                             # InstanceNormalization and ReLU included; output: (batch-size, 512, 31, 31)
+        output = nn.ZeroPad2d(padding=1)(output)                                              # output: (batch-size, 512, 33, 33)
+        output = Downsampler(1, 4, stride=1, padding=0)(output)                               # output: (batch-size, 1, 30, 30)
 
         return output
