@@ -85,17 +85,51 @@ class CycleGAN(nn.Module):
             "photo_disc_loss": photo_dis_loss,
         }
 
-    def train_model(
-        self,
+    
+        
+    
+
+    # def evaluate_model(self):
+    #     self.eval()  # Set model to eval mode
+    #     raise NotImplementedError
+
+    # def checkpoint_save(self, epoch:int, save_path:Union[str, Path]):
+    #     save_path = Path(save_path).resolve()
+    #     try: 
+    #         self.tracker_dict
+    #     except AttributeError:
+    #         print("The model has to train through at least one full epoch to be able to have the content to save.\nTrain at least one epoch before attempting checkpoint_save().")
+        
+    #     torch.save({
+    #         "epoch": epoch, 
+    #         "model_state_dict": self.state_dict(),
+    #         "optimizer_state_dict_monet_gen": self.monet_gen_optim.state_dict(),
+    #         "optimizer_state_dict_photo_gen": self.photo_gen_optim.state_dict(),
+    #         "optimizer_state_dict_monet_dis": self.monet_dis_optim.state_dict(),
+    #         "optimizer_state_dict_photo_dis": self.photo_dis_optim.state_dict(),
+    #         "loss_tracker": self.tracker_dict,
+    #     }, save_path)
+
+
+    # def checkpoint_load(self):
+    #     raise NotImplementedError
+
+
+def check_batch_size_eq(real_monet_batch:torch.Tensor, real_photo_batch:torch.Tensor) -> bool:
+    return real_monet_batch.size()[0] == real_photo_batch.size()[0]
+
+def train_one_epoch(
         monet_dataloader: ImageDataLoader,
         image_dataloader: ImageDataLoader,
+        model: nn.Module,
         monet_gen_optim: torch.optim.Optimizer = None,
         photo_gen_optim: torch.optim.Optimizer = None,
         monet_dis_optim: torch.optim.Optimizer = None,
         photo_dis_optim: torch.optim.Optimizer = None,
+        device:torch.cuda.device = torch.device("cpu"),
     ):
-
-        self.train()  # Set model to training mode
+        model = model.to(device=device)  # Make sure to update what model references to
+        model.train()  # Set model to training mode
         loss_tracker = {
             "monet_gen_loss_epoch_sum": 0,
             "photo_gen_loss_epoch_sum": 0,
@@ -105,27 +139,30 @@ class CycleGAN(nn.Module):
         num_batches = 0
 
         # Create optimizers if not provided
-        if monet_gen_optim is not None:
-            self.monet_gen_optim = monet_gen_optim
-        else:
-            self.monet_gen_optim = torch.optim.Adam(self.parameters(), lr=2e-4, betas=(0.5, 0.999))
-        if photo_gen_optim is not None:
-            self.photo_gen_optim = photo_gen_optim
-        else:
-            self.photo_gen_optim = torch.optim.Adam(self.parameters(), lr=2e-4, betas=(0.5, 0.999))
-        if monet_dis_optim is not None:
-            self.monet_dis_optim = monet_dis_optim
-        else:
-            self.monet_dis_optim = torch.optim.Adam(self.parameters(), lr=2e-4, betas=(0.5, 0.999))
-        if photo_dis_optim is not None:
-            self.photo_dis_optim = photo_dis_optim
-        else:
-            self.photo_dis_optim = torch.optim.Adam(self.parameters(), lr=2e-4, betas=(0.5, 0.999))
+        if monet_gen_optim is None:
+            monet_gen_optim = torch.optim.Adam(model.parameters(), lr=2e-4, betas=(0.5, 0.999))
+        if photo_gen_optim is None:
+            photo_gen_optim = torch.optim.Adam(model.parameters(), lr=2e-4, betas=(0.5, 0.999))
+        if monet_dis_optim is None:
+            monet_dis_optim = torch.optim.Adam(model.parameters(), lr=2e-4, betas=(0.5, 0.999))
+        if photo_dis_optim is None:
+            photo_dis_optim = torch.optim.Adam(model.parameters(), lr=2e-4, betas=(0.5, 0.999))
 
         # Train the model one batch at a time
         for idx_batch, (real_monet_batch, real_photo_batch) in enumerate(zip(monet_dataloader, image_dataloader)):
+            
             print(f"Training {idx_batch}-th batch...")
-            loss_dict = self.__train_one_batch(real_monet_batch, real_photo_batch)
+
+            # Forward pass and get loss dict
+            loss_dict = train_one_batch(
+                real_monet_batch=real_monet_batch, 
+                real_photo_batch=real_photo_batch,
+                model = model,
+                monet_gen_optim = monet_gen_optim, 
+                photo_gen_optim = photo_gen_optim, 
+                monet_dis_optim = monet_dis_optim, 
+                photo_dis_optim = photo_dis_optim,
+                device=device)
 
             # Update loss tracker
             for key in loss_dict:
@@ -135,67 +172,47 @@ class CycleGAN(nn.Module):
         output = {"loss_tracker": loss_tracker, 
                 "num_batches": num_batches}
         
-        self.tracker_dict = output
-
         return output
-        
 
 
-    def __train_one_batch(self, real_monet_batch: torch.Tensor, real_photo_batch: torch.Tensor):
-        # TODO: Consider if the gradients are summed and then updated multiple times from the sequential optimizer steps that may update the same parameter multiple times.
-        if not self.__check_batch_size_eq(real_monet_batch, real_photo_batch):
-            raise ValueError(f"Inputs are expected to have the same batch size, got real_monet_batch.size(): {real_monet_batch.size()}, real_photo_batch.size(): {real_photo_batch.size()}")
+def train_one_batch(
+        real_monet_batch: torch.Tensor, 
+        real_photo_batch: torch.Tensor,
+        model: nn.Module,
+        monet_gen_optim: torch.optim.Optimizer,
+        photo_gen_optim: torch.optim.Optimizer,
+        monet_dis_optim: torch.optim.Optimizer,
+        photo_dis_optim: torch.optim.Optimizer,
+        device:torch.cuda.device
+        ):
+    # TODO: Consider if the gradients are summed and then updated multiple times from the sequential optimizer steps that may update the same parameter multiple times.
+    if not check_batch_size_eq(real_monet_batch, real_photo_batch):
+        raise ValueError(f"Inputs are expected to have the same batch size, got real_monet_batch.size(): {real_monet_batch.size()}, real_photo_batch.size(): {real_photo_batch.size()}")
 
-        # Reset gradient on Autograd tracked parameters
-        self.monet_gen_optim.zero_grad()
-        self.photo_gen_optim.zero_grad()
-        self.monet_dis_optim.zero_grad()
-        self.photo_dis_optim.zero_grad()
+    real_monet_batch = real_monet_batch.to(device=device)
+    real_photo_batch = real_photo_batch.to(device=device)
 
-        # Forward pass to get the loss
-        loss_dict = self(real_monet_batch, real_photo_batch)
+    # Reset gradient on Autograd tracked parameters
+    monet_gen_optim.zero_grad()
+    photo_gen_optim.zero_grad()
+    monet_dis_optim.zero_grad()
+    photo_dis_optim.zero_grad()
 
-        # Backpropagte to calculate the gradient
-        idx_of_last_element = len(loss_dict)-1
-        for idx, key in enumerate(loss_dict):
-            if idx == idx_of_last_element:
-                loss_dict[key].backward()
-            else: 
-                loss_dict[key].backward(retain_graph=True)  # Prevents runtime error when trying to backward more than once.
+    # Forward pass to get the loss
+    loss_dict = model(real_monet_batch, real_photo_batch)
 
+    # Backpropagte to calculate the gradient
+    idx_of_last_element = len(loss_dict)-1
+    for idx, key in enumerate(loss_dict):
+        if idx == idx_of_last_element:
+            loss_dict[key].backward()
+        else: 
+            loss_dict[key].backward(retain_graph=True)  # Prevents runtime error when trying to backward more than once.
 
-        # Adjust parameters
-        self.monet_gen_optim.step()
-        self.photo_gen_optim.step()
-        self.monet_dis_optim.step()
-        self.photo_dis_optim.step()
+    # Adjust parameters
+    monet_gen_optim.step()
+    photo_gen_optim.step()
+    monet_dis_optim.step()
+    photo_dis_optim.step()
 
-        return loss_dict
-    
-    def __check_batch_size_eq(self, real_monet_batch:torch.Tensor, real_photo_batch:torch.Tensor) -> bool:
-        return real_monet_batch.size()[0] == real_photo_batch.size()[0]
-
-    def evaluate_model(self):
-        self.eval()  # Set model to eval mode
-        raise NotImplementedError
-
-    def checkpoint_save(self, epoch:int, save_path:Union[str, Path]):
-        save_path = Path(save_path).resolve()
-        try: 
-            self.tracker_dict
-        except AttributeError:
-            print("The model has to train through at least one full epoch to be able to have the content to save.\nTrain at least one epoch before attempting checkpoint_save().")
-        
-        torch.save({
-            "epoch": epoch, 
-            "model_state_dict": self.state_dict(),
-            "optimizer_state_dict_monet_gen": self.monet_gen_optim.state_dict(),
-            "optimizer_state_dict_photo_gen": self.photo_gen_optim.state_dict(),
-            "optimizer_state_dict_monet_dis": self.monet_dis_optim.state_dict(),
-            "optimizer_state_dict_photo_dis": self.photo_dis_optim.state_dict(),
-            "loss_tracker": self.tracker_dict,
-        }, save_path)
-
-
-    def checkpoint_load(self):
-        raise NotImplementedError
+    return loss_dict

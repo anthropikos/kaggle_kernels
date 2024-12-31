@@ -43,7 +43,7 @@ class ImageDataset(Dataset):
     def __extract_tensor(self, image_path: Path) -> torch.Tensor:
         img = self.__extract_image(image_path)
         transform = ToTensor()
-        img = transform(img)
+        img = transform(img).float()
         return img
 
     def __sort_datapath_list(self, datapath_list: Iterable[Path]) -> Iterable[Path]:
