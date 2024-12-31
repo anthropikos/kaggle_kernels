@@ -6,6 +6,8 @@ from .generator import Generator
 from .discriminator import Discriminator
 from .loss import GeneratorLoss, DiscriminatorLoss, CycleLoss, IdentityLoss
 from .data import ImageDataLoader
+from pathlib import Path
+from typing import Union
 
 
 class CycleGAN(nn.Module):
@@ -94,6 +96,13 @@ class CycleGAN(nn.Module):
     ):
 
         self.train()  # Set model to training mode
+        loss_tracker = {
+            "monet_gen_loss_epoch_sum": 0,
+            "photo_gen_loss_epoch_sum": 0,
+            "monet_disc_loss_epoch_sum": 0,
+            "photo_disc_loss_epoch_sum": 0, 
+        }
+        num_batches = 0
 
         # Create optimizers if not provided
         if monet_gen_optim is not None:
@@ -116,11 +125,26 @@ class CycleGAN(nn.Module):
         # Train the model one batch at a time
         for idx_batch, (real_monet_batch, real_photo_batch) in enumerate(zip(monet_dataloader, image_dataloader)):
             print(f"Training {idx_batch}-th batch...")
-            self.__train_one_batch(real_monet_batch, real_photo_batch)
+            loss_dict = self.__train_one_batch(real_monet_batch, real_photo_batch)
 
-        return
+            # Update loss tracker
+            for key in loss_dict:
+                loss_tracker[f"{key}_epoch_sum"] += loss_dict[key].item()
+            num_batches += 1
+        
+        output = {"loss_tracker": loss_tracker, 
+                "num_batches": num_batches}
+        
+        self.tracker_dict = output
+
+        return output
+        
+
 
     def __train_one_batch(self, real_monet_batch: torch.Tensor, real_photo_batch: torch.Tensor):
+        # TODO: Consider if the gradients are summed and then updated multiple times from the sequential optimizer steps that may update the same parameter multiple times.
+        if not self.__check_batch_size_eq(real_monet_batch, real_photo_batch):
+            raise ValueError(f"Inputs are expected to have the same batch size, got real_monet_batch.size(): {real_monet_batch.size()}, real_photo_batch.size(): {real_photo_batch.size()}")
 
         # Reset gradient on Autograd tracked parameters
         self.monet_gen_optim.zero_grad()
@@ -132,8 +156,13 @@ class CycleGAN(nn.Module):
         loss_dict = self(real_monet_batch, real_photo_batch)
 
         # Backpropagte to calculate the gradient
-        for loss_name, loss_tensor in loss_dict.items():
-            loss_tensor.backward()
+        idx_of_last_element = len(loss_dict)-1
+        for idx, key in enumerate(loss_dict):
+            if idx == idx_of_last_element:
+                loss_dict[key].backward()
+            else: 
+                loss_dict[key].backward(retain_graph=True)  # Prevents runtime error when trying to backward more than once.
+
 
         # Adjust parameters
         self.monet_gen_optim.step()
@@ -141,14 +170,32 @@ class CycleGAN(nn.Module):
         self.monet_dis_optim.step()
         self.photo_dis_optim.step()
 
-        return
+        return loss_dict
+    
+    def __check_batch_size_eq(self, real_monet_batch:torch.Tensor, real_photo_batch:torch.Tensor) -> bool:
+        return real_monet_batch.size()[0] == real_photo_batch.size()[0]
 
     def evaluate_model(self):
         self.eval()  # Set model to eval mode
         raise NotImplementedError
 
-    def checkpoint_save(self):
-        raise NotImplementedError
+    def checkpoint_save(self, epoch:int, save_path:Union[str, Path]):
+        save_path = Path(save_path).resolve()
+        try: 
+            self.tracker_dict
+        except AttributeError:
+            print("The model has to train through at least one full epoch to be able to have the content to save.\nTrain at least one epoch before attempting checkpoint_save().")
+        
+        torch.save({
+            "epoch": epoch, 
+            "model_state_dict": self.state_dict(),
+            "optimizer_state_dict_monet_gen": self.monet_gen_optim.state_dict(),
+            "optimizer_state_dict_photo_gen": self.photo_gen_optim.state_dict(),
+            "optimizer_state_dict_monet_dis": self.monet_dis_optim.state_dict(),
+            "optimizer_state_dict_photo_dis": self.photo_dis_optim.state_dict(),
+            "loss_tracker": self.tracker_dict,
+        }, save_path)
+
 
     def checkpoint_load(self):
         raise NotImplementedError

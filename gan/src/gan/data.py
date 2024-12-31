@@ -58,5 +58,10 @@ class ImageDataset(Dataset):
 
 class ImageDataLoader(DataLoader):
     def __init__(self, dataset: ImageDataset):
-        super().__init__(dataset=dataset, batch_size=10, num_workers=2)
+        super().__init__(
+            dataset=dataset, 
+            batch_size=10, 
+            num_workers=2, 
+            drop_last=True,  # Ensures that all outputs have same batch sizes
+        )
         return
