@@ -5,7 +5,7 @@
 ## - What if the num_features argument of the instance norm layer does not match that of the number of layers in input? Why doesn't it raise an error?
 ## - What if in_channels of conv2d or convtranspose2d does not match input's feature number size?
 
-## Reference: 
+## Reference:
 ##   - Amy Jang's CycleGAN notebook: https://www.kaggle.com/code/amyjang/monet-cyclegan-tutorial
 
 from typing import Iterable, Callable
@@ -15,60 +15,55 @@ import numpy as np
 from .upsampler import Upsampler
 from .downsampler import Downsampler
 
+
 class Generator(nn.Module):
-    def __init__(self, Downsampler:Callable=Downsampler, Upsampler:Callable=Upsampler):
+    def __init__(self, downsampler_factory: Callable = None, upsampler_factory: Callable = None):
         """Generator, inspired by UNET architecture."""
 
         super().__init__()
 
+        if downsampler_factory is None:
+            downsampler_factory = Downsampler
+        if upsampler_factory is None:
+            upsampler_factory = Upsampler
+
         # Intput size (batch-size, 3, 256, 256)
-        self.downsampling_stack = [
-            Downsampler(32),                     # Output: (batch-size, 32, 128, 128)
-            Downsampler(64),                     # Output: (batch-size, 64, 64, 64)
-            Downsampler(128),                    # Output: (batch-size, 128, 32, 32)
-            Downsampler(256),                    # Output: (batch-size, 256, 16, 16)
-            Downsampler(512),                    # Output: (batch-size, 512, 8, 8)
-            Downsampler(512),                    # Output: (batch-size, 512, 4, 4)
-            Downsampler(512),                    # Output: (batch-size, 512, 2, 2)
-        ]
+        self.downsampling_stack = nn.ParameterList(
+            [
+                downsampler_factory(32),  # Output: (batch-size, 32, 128, 128)
+                downsampler_factory(64),  # Output: (batch-size, 64, 64, 64)
+                downsampler_factory(128),  # Output: (batch-size, 128, 32, 32)
+                downsampler_factory(256),  # Output: (batch-size, 256, 16, 16)
+                downsampler_factory(512),  # Output: (batch-size, 512, 8, 8)
+                downsampler_factory(512),  # Output: (batch-size, 512, 4, 4)
+                downsampler_factory(512),  # Output: (batch-size, 512, 2, 2)
+            ]
+        )
 
-        self.upsampling_stack = [
-            Upsampler(512),                      # Output: (batch-size, 1024, 4, 4)
-            Upsampler(512),                      # Output: (batch-size, 1024, 8, 8)
-            Upsampler(256),                      # Output: (batch-size, 512, 16, 16)
-            Upsampler(128),                      # Output: (batch-size, 256, 32, 32)
-            Upsampler(64),                       # Output: (batch-size, 128, 64, 64)
-            Upsampler(32),                       # Output: (batch-size, 64, 128, 128)
-        ]
+        self.upsampling_stack = nn.ParameterList(
+            [
+                upsampler_factory(512),  # Output: (batch-size, 1024, 4, 4)
+                upsampler_factory(512),  # Output: (batch-size, 1024, 8, 8)
+                upsampler_factory(256),  # Output: (batch-size, 512, 16, 16)
+                upsampler_factory(128),  # Output: (batch-size, 256, 32, 32)
+                upsampler_factory(64),  # Output: (batch-size, 128, 64, 64)
+                upsampler_factory(32),  # Output: (batch-size, 64, 128, 128)
+            ]
+        )
 
-        self.final_layer = Upsampler(3)
+        self.final_layer = Upsampler(3)  # Output: (batch-size, 3, 256, 256)
 
-    def __channel_concat(self, layers:Iterable[np.ndarray]):
-        """Concat the ndarray along channel dimension depending on whether input is batched."""
-        match layers[0].dim():
-            case 3:  # Input is NOT batched thus have ndim of 3
-                return torch.cat(layers, 0)
-            case 4:  # Input is batched thus have ndim of 4
-                return torch.cat(layers, 1)
-            case _:
-                raise AttributeError(f"Expect input array dimension size of either 3 or 4, got {layers[0].dim()}")
-            
-    def __input_size_okay(self, input:torch.Tensor) -> bool:
+    def __input_size_okay(self, input: torch.Tensor) -> bool:
         """Checks if input dimension is acceptable."""
-        match input.dim():
-            case 3:
-                dim = input.size()
-                if (dim[1]!=256) | (dim[2]!=256):
-                    raise AttributeError(f"Input images have to be 256x256, got {dim[1]}x{dim[2]}")
-            case 4:
-                dim = input.size()
-                if (dim[2]!=256) | (dim[3]!=256):
-                    raise AttributeError(f"Input images have to be 256x256, got {dim[2]}x{dim[3]}")
-            case _:
-                raise AttributeError(f"Expect input dimension size of either 3 or 4, got {input.dim()}")
-            
+        if input.dim() != 4:
+            raise ValueError(f"Expected input dimension to be 4, got {input.dim()} instead.")
+        input_size = input.size()
+        if (input_size[2] != 256) | (input_size[3] != 256):
+            raise ValueError(f"Input images have to be 256x256, got {input_size[2]}x{input_size[3]}")
 
-    def forward(self, input:torch.Tensor):
+        return
+
+    def forward(self, input: torch.Tensor):
         self.__input_size_okay(input=input)
 
         # Unet downsampling steps
@@ -83,11 +78,9 @@ class Generator(nn.Module):
         skips_holder = reversed(skips_holder[:-1])
         for idx, (upsampling_layer, skip) in enumerate(zip(self.upsampling_stack, skips_holder)):
             output = upsampling_layer(output)
-            print(f"{idx}, output.size(): {output.size()}, skip.size(): {skip.size()}")
-            ouptut = self.__channel_concat((skip, output))
+            output = torch.cat((skip, output), 1)
 
         # Last upsampling layer (does NOT need to concat)
-        output = self.final_layer(ouptut)
+        output = self.final_layer(output)
 
         return output
-

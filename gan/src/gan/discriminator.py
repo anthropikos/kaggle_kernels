@@ -5,36 +5,45 @@ from typing import Callable
 import torch
 from torch import nn
 
+
 class Discriminator(nn.Module):
-    def __init__(self, Downsampler:Callable=Downsampler):
+    def __init__(self, downsampler_factory: Callable = None):
         """Discriminator model; inspired by UNET architecture."""
 
         super().__init__()
+        if downsampler_factory is None:
+            downsampler_factory = Downsampler
 
-    def __input_size_okay(self, input:torch.Tensor) -> bool:
+        self.processing_stack = nn.ParameterList(
+            [
+                downsampler_factory(
+                    filters=64, kernel_size=4, apply_instanceNorm=False
+                ),  # output: (batch-size, 64, 128, 128)
+                downsampler_factory(128, 4),  # output: (batch-size, 128, 64, 64)
+                downsampler_factory(256, 4),  # output: (batch_size, 256, 32, 32)
+                nn.ZeroPad2d(padding=1),  # output: (batch-size, 256, 34, 34)
+                downsampler_factory(
+                    512, 4, stride=1, padding=0
+                ),  # InstanceNormalization and ReLU included; output: (batch-size, 512, 31, 31)
+                nn.ZeroPad2d(padding=1),  # output: (batch-size, 512, 33, 33)
+                downsampler_factory(1, 4, stride=1, padding=0),  # output: (batch-size, 1, 30, 30)
+            ]
+        )
+
+    def __input_size_okay(self, input: torch.Tensor) -> bool:
         """Checks if input dimension is acceptable."""
-        match input.dim():
-            case 3:
-                dim = input.size()
-                if (dim[1]!=256) | (dim[2]!=256):
-                    raise AttributeError(f"Input images have to be 256x256, got {dim[1]}x{dim[2]}")
-            case 4:
-                dim = input.size()
-                if (dim[2]!=256) | (dim[3]!=256):
-                    raise AttributeError(f"Input images have to be 256x256, got {dim[2]}x{dim[3]}")
-            case _:
-                raise AttributeError(f"Expect input dimension size of either 3 or 4, got {input.dim()}")
-    
-    def forward(self, input:torch.Tensor):
+        if input.dim() != 4:
+            raise ValueError(f"Expected input dimension size to be 4, got {input.dim()} instead.")
+        input_size = input.size()
+        if (input_size[2] != 256) | (input_size[3] != 256):
+            raise ValueError(f"Input have to have (batch-size, 3, 256, 256), got {input_size} instead.")
+        return
+
+    def forward(self, input: torch.Tensor):
         self.__input_size_okay(input=input)
 
         output = input  # So that the same variable `output` can be used repeatedly
-        output = Downsampler(filters=64, kernel_size=4, apply_instanceNorm=False)(output)     # output: (batch-size, 64, 128, 128)
-        output = Downsampler(128, 4)(output)                                                  # output: (batch-size, 128, 64, 64)
-        output = Downsampler(256, 4)(output)                                                  # output: (batch_size, 256, 32, 32)
-        output = nn.ZeroPad2d(padding=1)(output)                                              # output: (batch-size, 256, 34, 34)
-        output = Downsampler(512, 4, stride=1, padding=0)(output)                             # InstanceNormalization and ReLU included; output: (batch-size, 512, 31, 31)
-        output = nn.ZeroPad2d(padding=1)(output)                                              # output: (batch-size, 512, 33, 33)
-        output = Downsampler(1, 4, stride=1, padding=0)(output)                               # output: (batch-size, 1, 30, 30)
+        for layer in self.processing_stack:
+            output = layer(output)
 
         return output

@@ -4,11 +4,12 @@ import unittest
 import torch
 from gan.downsampler import Downsampler
 
-class TestDownsampler(unittest.TestCase):
 
-    def test_default_float32(self):
-        n_filters=3
-        input = torch.randint(255, (3, 256, 256)).double()
+class Test_Downsampler(unittest.TestCase):
+
+    def test_float64_input(self):
+        n_filters = 3
+        input = torch.randint(255, (5, 3, 256, 256), dtype=torch.float64)
         layer = Downsampler(filters=n_filters)
 
         # Method 1
@@ -17,22 +18,32 @@ class TestDownsampler(unittest.TestCase):
         # Method 2
         with self.assertRaises(RuntimeError) as cm:
             output = layer(input)
+        return
 
     def test_simple(self):
         self.assertEqual(4, 4)
+        return
+
+    def test_nonbatched_input(self):
+        input = torch.randint(255, (3, 256, 256), dtype=torch.float32)
+        layer = Downsampler(filters=3)
+        with self.assertRaises(ValueError) as cm:
+            output = layer(input)
+        return
 
 
 class Test_Downsampler(unittest.TestCase):
     def test_defaultDownsampler(self):
         """Verify that the default downsampler halves the width and height."""
 
-        channels, height, width = 3, 256, 256
+        batch_size, channels, height, width = 5, 3, 256, 256
 
-        input = torch.randint(255, (channels, height, width)).to(dtype=torch.float32)
+        input = torch.randint(255, (batch_size, channels, height, width)).to(dtype=torch.float32)
         layer = Downsampler(filters=channels)
         output = layer(input)
 
-        self.assertEqual(output.size(), (channels, height/2, width/2))
+        self.assertEqual(output.size(), (batch_size, channels, height / 2, width / 2))
+        return
 
     def test_padding_1(self):
         batch_size, channels, height, width = 5, 3, 256, 256
@@ -42,6 +53,7 @@ class Test_Downsampler(unittest.TestCase):
         output = layer(input)
 
         self.assertEqual(output.size(), torch.Size((5, 1, 128, 128)))
+        return
 
     def test_padding_2(self):
         batch_size, channels, height, width = 5, 3, 256, 256
@@ -51,6 +63,7 @@ class Test_Downsampler(unittest.TestCase):
         output = layer(input)
 
         self.assertEqual(output.size(), torch.Size((5, 1, 129, 129)))
+        return
 
 
 if __name__ == "__main__":
