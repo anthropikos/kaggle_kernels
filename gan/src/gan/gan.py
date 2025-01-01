@@ -8,6 +8,8 @@ from .loss import GeneratorLoss, DiscriminatorLoss, CycleLoss, IdentityLoss
 from .data import ImageDataLoader
 from pathlib import Path
 from typing import Union
+from sys import getsizeof
+from tqdm import tqdm
 
 
 class CycleGAN(nn.Module):
@@ -125,8 +127,8 @@ def checkpoint_save(epoch:int,
                     photo_dis_optim:torch.optim.Optimizer,
                     loss_tracker:dict,
                     ):
-    
-    save_path = Path(save_path).resolve()
+    filename = f"torch_epoch_{epoch}.checkpoint"
+    save_path = (Path(save_path)/Path(filename)).resolve()
     dict_to_serialize = {
         "epoch": epoch, 
         "model_state_dict": model.state_dict(),
@@ -136,11 +138,16 @@ def checkpoint_save(epoch:int,
         "optimizer_state_dict_photo_dis": photo_dis_optim.state_dict(),
         "loss_tracker": loss_tracker,
     }
-    
+    # print_size(**dict_to_serialize)  # DEBUG
     torch.save(dict_to_serialize, save_path)
+    # print_size(**dict_to_serialize)  # DEBUG
 
     return dict_to_serialize
 
+def print_size(**kwargs):
+    # DEBUG USE
+    for key in kwargs:
+        print(f"{key} size: {getsizeof(kwargs[key])}")
 
 def check_batch_size_eq(real_monet_batch:torch.Tensor, real_photo_batch:torch.Tensor) -> bool:
     return real_monet_batch.size()[0] == real_photo_batch.size()[0]
@@ -166,9 +173,9 @@ def train_one_epoch(
         num_batches = 0
 
         # Train the model one batch at a time
-        for idx_batch, (real_monet_batch, real_photo_batch) in enumerate(zip(monet_dataloader, photo_dataloader)):
+        for idx_batch, (real_monet_batch, real_photo_batch) in tqdm(enumerate(zip(monet_dataloader, photo_dataloader)), desc="Training...", unit="batch"):
             
-            print(f"Training {idx_batch}-th batch...")
+            # print(f"Training {idx_batch}-th batch...")
 
             # Forward pass and get loss dict
             loss_dict = train_one_batch(
@@ -181,9 +188,10 @@ def train_one_epoch(
                 photo_dis_optim = photo_dis_optim,
                 device=device)
 
-            # Update loss tracker
+            # Update loss tracker - Make sure to not accumulate history
+            # https://pytorch.org/docs/stable/notes/faq.html
             for key in loss_dict:
-                loss_tracker[f"{key}_epoch_sum"] += loss_dict[key].item()
+                loss_tracker[f"{key}_epoch_sum"] += loss_dict[key].item()  # Python number thus detached from comp graph
             num_batches += 1
         
         output = {"loss_tracker": loss_tracker, 
