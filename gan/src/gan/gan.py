@@ -85,34 +85,56 @@ class CycleGAN(nn.Module):
             "photo_disc_loss": photo_dis_loss,
         }
 
+    def __input_check(self, input:torch.Tensor):
+        input_ndim = input.dim()
+        input_dim = input.size()
+        
+        if input_ndim != 3:
+            raise ValueError(f"Input has to be unbatched, single image. Got input dimension of {input_dim}")
+        if input_dim != torch.Size([3, 256, 256]):
+            raise ValueError(f"Input dimension error, expected (3, 256, 256), got {input_dim}.")
+
+    def generate_monet(self, input:torch.Tensor):
+        self.__input_check(input)
+        self.to(torch.device("cpu"))
+        self.eval()
+        input = input.reshape((1, 3, 256, 256))
+        generated = self.monet_gen(input)
+        output = generated.reshape((3, 256, 256))
+        return output
+    
+    def generate_photo(self, input:torch.Tensor):
+        self.__input_check(input)
+        self.to(torch.device("cpu"))
+        self.eval()
+        input = input.reshape((1, 3, 256, 256))
+        generated = self.monet_gen(input)
+        output = generated.reshape((3, 256, 256))
+        return output
     
         
     
 
-    # def evaluate_model(self):
-    #     self.eval()  # Set model to eval mode
-    #     raise NotImplementedError
+def evaluate_model():
+    # model.eval()  # Set model to eval mode
+    raise NotImplementedError
 
-    # def checkpoint_save(self, epoch:int, save_path:Union[str, Path]):
-    #     save_path = Path(save_path).resolve()
-    #     try: 
-    #         self.tracker_dict
-    #     except AttributeError:
-    #         print("The model has to train through at least one full epoch to be able to have the content to save.\nTrain at least one epoch before attempting checkpoint_save().")
-        
-    #     torch.save({
-    #         "epoch": epoch, 
-    #         "model_state_dict": self.state_dict(),
-    #         "optimizer_state_dict_monet_gen": self.monet_gen_optim.state_dict(),
-    #         "optimizer_state_dict_photo_gen": self.photo_gen_optim.state_dict(),
-    #         "optimizer_state_dict_monet_dis": self.monet_dis_optim.state_dict(),
-    #         "optimizer_state_dict_photo_dis": self.photo_dis_optim.state_dict(),
-    #         "loss_tracker": self.tracker_dict,
-    #     }, save_path)
-
-
-    # def checkpoint_load(self):
-    #     raise NotImplementedError
+def checkpoint_save(self, epoch:int, save_path:Union[str, Path]):
+    save_path = Path(save_path).resolve()
+    try: 
+        self.tracker_dict
+    except AttributeError:
+        print("The model has to train through at least one full epoch to be able to have the content to save.\nTrain at least one epoch before attempting checkpoint_save().")
+    
+    torch.save({
+        "epoch": epoch, 
+        "model_state_dict": self.state_dict(),
+        "optimizer_state_dict_monet_gen": self.monet_gen_optim.state_dict(),
+        "optimizer_state_dict_photo_gen": self.photo_gen_optim.state_dict(),
+        "optimizer_state_dict_monet_dis": self.monet_dis_optim.state_dict(),
+        "optimizer_state_dict_photo_dis": self.photo_dis_optim.state_dict(),
+        "loss_tracker": self.tracker_dict,
+    }, save_path)
 
 
 def check_batch_size_eq(real_monet_batch:torch.Tensor, real_photo_batch:torch.Tensor) -> bool:
@@ -120,12 +142,12 @@ def check_batch_size_eq(real_monet_batch:torch.Tensor, real_photo_batch:torch.Te
 
 def train_one_epoch(
         monet_dataloader: ImageDataLoader,
-        image_dataloader: ImageDataLoader,
+        photo_dataloader: ImageDataLoader,
         model: nn.Module,
-        monet_gen_optim: torch.optim.Optimizer = None,
-        photo_gen_optim: torch.optim.Optimizer = None,
-        monet_dis_optim: torch.optim.Optimizer = None,
-        photo_dis_optim: torch.optim.Optimizer = None,
+        monet_gen_optim: torch.optim.Optimizer,
+        photo_gen_optim: torch.optim.Optimizer,
+        monet_dis_optim: torch.optim.Optimizer,
+        photo_dis_optim: torch.optim.Optimizer,
         device:torch.cuda.device = torch.device("cpu"),
     ):
         model = model.to(device=device)  # Make sure to update what model references to
@@ -138,18 +160,8 @@ def train_one_epoch(
         }
         num_batches = 0
 
-        # Create optimizers if not provided
-        if monet_gen_optim is None:
-            monet_gen_optim = torch.optim.Adam(model.parameters(), lr=2e-4, betas=(0.5, 0.999))
-        if photo_gen_optim is None:
-            photo_gen_optim = torch.optim.Adam(model.parameters(), lr=2e-4, betas=(0.5, 0.999))
-        if monet_dis_optim is None:
-            monet_dis_optim = torch.optim.Adam(model.parameters(), lr=2e-4, betas=(0.5, 0.999))
-        if photo_dis_optim is None:
-            photo_dis_optim = torch.optim.Adam(model.parameters(), lr=2e-4, betas=(0.5, 0.999))
-
         # Train the model one batch at a time
-        for idx_batch, (real_monet_batch, real_photo_batch) in enumerate(zip(monet_dataloader, image_dataloader)):
+        for idx_batch, (real_monet_batch, real_photo_batch) in enumerate(zip(monet_dataloader, photo_dataloader)):
             
             print(f"Training {idx_batch}-th batch...")
 
