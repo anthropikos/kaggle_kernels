@@ -111,30 +111,35 @@ class CycleGAN(nn.Module):
         generated = self.monet_gen(input)
         output = generated.reshape((3, 256, 256))
         return output
-    
         
-    
-
 def evaluate_model():
     # model.eval()  # Set model to eval mode
     raise NotImplementedError
 
-def checkpoint_save(self, epoch:int, save_path:Union[str, Path]):
-    save_path = Path(save_path).resolve()
-    try: 
-        self.tracker_dict
-    except AttributeError:
-        print("The model has to train through at least one full epoch to be able to have the content to save.\nTrain at least one epoch before attempting checkpoint_save().")
+def checkpoint_save(epoch:int, 
+                    save_path:Union[str, Path],
+                    model:nn.Module, 
+                    monet_gen_optim:torch.optim.Optimizer,
+                    photo_gen_optim:torch.optim.Optimizer,
+                    monet_dis_optim:torch.optim.Optimizer,
+                    photo_dis_optim:torch.optim.Optimizer,
+                    loss_tracker:dict,
+                    ):
     
-    torch.save({
+    save_path = Path(save_path).resolve()
+    dict_to_serialize = {
         "epoch": epoch, 
-        "model_state_dict": self.state_dict(),
-        "optimizer_state_dict_monet_gen": self.monet_gen_optim.state_dict(),
-        "optimizer_state_dict_photo_gen": self.photo_gen_optim.state_dict(),
-        "optimizer_state_dict_monet_dis": self.monet_dis_optim.state_dict(),
-        "optimizer_state_dict_photo_dis": self.photo_dis_optim.state_dict(),
-        "loss_tracker": self.tracker_dict,
-    }, save_path)
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict_monet_gen": monet_gen_optim.state_dict(),
+        "optimizer_state_dict_photo_gen": photo_gen_optim.state_dict(),
+        "optimizer_state_dict_monet_dis": monet_dis_optim.state_dict(),
+        "optimizer_state_dict_photo_dis": photo_dis_optim.state_dict(),
+        "loss_tracker": loss_tracker,
+    }
+    
+    torch.save(dict_to_serialize, save_path)
+
+    return dict_to_serialize
 
 
 def check_batch_size_eq(real_monet_batch:torch.Tensor, real_photo_batch:torch.Tensor) -> bool:
