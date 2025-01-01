@@ -24,7 +24,7 @@ def image_preview(dataset: Dataset, row: int, col: int) -> mpl.figure.Figure:
 
 def plot_before_after(real:torch.Tensor, generated:torch.Tensor, suptitle:str=None) -> mpl.figure.Figure:
     """Return an Figure of before and after."""
-    fig, axs = plt.subplots(1, 2, figsize=(5, 10))
+    fig, axs = plt.subplots(1, 2, figsize=(6, 3))
 
     converter = ToPILImage()
     real = converter(real)
@@ -44,9 +44,9 @@ def plot_before_after(real:torch.Tensor, generated:torch.Tensor, suptitle:str=No
     ax.set_title("Generated")
 
     # Figure settings
-    fig.tight_layout()
     if suptitle is not None:
         fig.suptitle(suptitle)
-
+    # fig.patch.set_edgecolor("black")
+    fig.tight_layout()
     return fig
     
