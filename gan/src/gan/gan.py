@@ -121,33 +121,22 @@ def evaluate_model():
 def checkpoint_save(epoch:int, 
                     save_path:Union[str, Path],
                     model:nn.Module, 
-                    monet_gen_optim:torch.optim.Optimizer,
-                    photo_gen_optim:torch.optim.Optimizer,
-                    monet_dis_optim:torch.optim.Optimizer,
-                    photo_dis_optim:torch.optim.Optimizer,
+                    optimizer:torch.optim.Optimizer,
                     loss_tracker:dict,
                     ):
     filename = f"torch_epoch_{epoch}.checkpoint"
+
     save_path = (Path(save_path)/Path(filename)).resolve()
+
     dict_to_serialize = {
         "epoch": epoch, 
         "model_state_dict": model.state_dict(),
-        "optimizer_state_dict_monet_gen": monet_gen_optim.state_dict(),
-        "optimizer_state_dict_photo_gen": photo_gen_optim.state_dict(),
-        "optimizer_state_dict_monet_dis": monet_dis_optim.state_dict(),
-        "optimizer_state_dict_photo_dis": photo_dis_optim.state_dict(),
+        "optimizer": optimizer.state_dict(),
         "loss_tracker": loss_tracker,
     }
-    # print_size(**dict_to_serialize)  # DEBUG
     torch.save(dict_to_serialize, save_path)
-    # print_size(**dict_to_serialize)  # DEBUG
 
     return dict_to_serialize
-
-def print_size(**kwargs):
-    # DEBUG USE
-    for key in kwargs:
-        print(f"{key} size: {getsizeof(kwargs[key])}")
 
 def check_batch_size_eq(real_monet_batch:torch.Tensor, real_photo_batch:torch.Tensor) -> bool:
     return real_monet_batch.size()[0] == real_photo_batch.size()[0]
@@ -156,10 +145,7 @@ def train_one_epoch(
         monet_dataloader: ImageDataLoader,
         photo_dataloader: ImageDataLoader,
         model: nn.Module,
-        monet_gen_optim: torch.optim.Optimizer,
-        photo_gen_optim: torch.optim.Optimizer,
-        monet_dis_optim: torch.optim.Optimizer,
-        photo_dis_optim: torch.optim.Optimizer,
+        optimizer: torch.optim.Optimizer,
         device:torch.cuda.device = torch.device("cpu"),
     ):
         model = model.to(device=device)  # Make sure to update what model references to
@@ -182,10 +168,7 @@ def train_one_epoch(
                 real_monet_batch=real_monet_batch, 
                 real_photo_batch=real_photo_batch,
                 model = model,
-                monet_gen_optim = monet_gen_optim, 
-                photo_gen_optim = photo_gen_optim, 
-                monet_dis_optim = monet_dis_optim, 
-                photo_dis_optim = photo_dis_optim,
+                optimizer = optimizer,
                 device=device)
 
             # Update loss tracker - Make sure to not accumulate history
@@ -204,40 +187,23 @@ def train_one_batch(
         real_monet_batch: torch.Tensor, 
         real_photo_batch: torch.Tensor,
         model: nn.Module,
-        monet_gen_optim: torch.optim.Optimizer,
-        photo_gen_optim: torch.optim.Optimizer,
-        monet_dis_optim: torch.optim.Optimizer,
-        photo_dis_optim: torch.optim.Optimizer,
+        optimizer: torch.optim.Optimizer,
         device:torch.cuda.device
         ):
-    # TODO: Consider if the gradients are summed and then updated multiple times from the sequential optimizer steps that may update the same parameter multiple times.
+
     if not check_batch_size_eq(real_monet_batch, real_photo_batch):
         raise ValueError(f"Inputs are expected to have the same batch size, got real_monet_batch.size(): {real_monet_batch.size()}, real_photo_batch.size(): {real_photo_batch.size()}")
 
     real_monet_batch = real_monet_batch.to(device=device)
     real_photo_batch = real_photo_batch.to(device=device)
 
-    # Reset gradient on Autograd tracked parameters
-    monet_gen_optim.zero_grad()
-    photo_gen_optim.zero_grad()
-    monet_dis_optim.zero_grad()
-    photo_dis_optim.zero_grad()
-
     # Forward pass to get the loss
     loss_dict = model(real_monet_batch, real_photo_batch)
-
-    # Backpropagte to calculate the gradient
-    idx_of_last_element = len(loss_dict)-1
-    for idx, key in enumerate(loss_dict):
-        if idx == idx_of_last_element:
-            loss_dict[key].backward()
-        else: 
-            loss_dict[key].backward(retain_graph=True)  # Prevents runtime error when trying to backward more than once.
-
-    # Adjust parameters
-    monet_gen_optim.step()
-    photo_gen_optim.step()
-    monet_dis_optim.step()
-    photo_dis_optim.step()
+    combined_loss = torch.zeros((),device=device)
+    for loss_name, loss_value in loss_dict.items():
+        combined_loss += loss_value
+    optimizer.zero_grad()
+    combined_loss.backward()
+    optimizer.step()
 
     return loss_dict
