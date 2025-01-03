@@ -98,7 +98,6 @@ class CycleGAN(nn.Module):
 
     def generate_monet(self, input:torch.Tensor):
         self.__input_check(input)
-        self.to(torch.device("cpu"))
         self.eval()
         input = input.reshape((1, 3, 256, 256))
         generated = self.monet_gen(input)
@@ -107,7 +106,6 @@ class CycleGAN(nn.Module):
     
     def generate_photo(self, input:torch.Tensor):
         self.__input_check(input)
-        self.to(torch.device("cpu"))
         self.eval()
         input = input.reshape((1, 3, 256, 256))
         generated = self.monet_gen(input)

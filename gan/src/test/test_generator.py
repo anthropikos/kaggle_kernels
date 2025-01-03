@@ -8,12 +8,12 @@ from gan.upsampler import Upsampler
 class Test_Generator(unittest.TestCase):
     def test_check_output_dimension(self):
         """The dimension of the output of the generator is expected to be the same as the input."""
-        intput_dim = (10, 3, 256, 256)
-        input = torch.randint(255, size=intput_dim, dtype=torch.float32)
+        input_dim = (10, 3, 256, 256)
+        input = torch.randint(255, size=input_dim, dtype=torch.float32)
         layer = Generator(downsampler_factory=Downsampler, upsampler_factory=Upsampler)
         output = layer(input)
 
-        self.assertEqual(output.size(), torch.Size(intput_dim))
+        self.assertEqual(output.size(), torch.Size(input_dim))
         return
 
     def test_input_greater_dim(self):
