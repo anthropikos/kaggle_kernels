@@ -1,4 +1,4 @@
-name: torch-cuda
+name: torch_cuda
 channels:
   - conda-forge
   - defaults
@@ -241,4 +241,4 @@ dependencies:
   - zeromq=4.3.5=h3b0a872_7
   - zipp=3.21.0=pyhd8ed1ab_1
   - zstd=1.5.6=ha6fb4c9_0
-prefix: /home/anthony/miniconda3/envs/torch-cuda
+prefix: /home/anthony/miniconda3/envs/torch_cuda
