@@ -11,6 +11,7 @@ class Downsampler(nn.Module):
         kernel_size: int = 4,
         stride: int = 2,
         padding: int = 1,
+        apply_instancenorm:bool=True,
     ):
         """Simple downsampler.
         
@@ -26,6 +27,7 @@ class Downsampler(nn.Module):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
+        self.apply_instancenorm = apply_instancenorm
         self.layers = nn.Sequential()
 
         # Add layers
@@ -37,7 +39,8 @@ class Downsampler(nn.Module):
                 padding=self.padding,
             )
         )
-        self.layers.append(nn.InstanceNorm2d(num_features=self.filters))
+        if self.apply_instancenorm:
+            self.layers.append(nn.InstanceNorm2d(num_features=self.filters))
         self.layers.append(nn.LeakyReLU())
         
     def forward(self, input: torch.Tensor):

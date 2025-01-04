@@ -11,6 +11,7 @@ class Upsampler(nn.Module):
         kernel_size: int = 4,
         stride: int = 2,
         padding: int = 1,
+        apply_dropout:bool = False,
     ):
         """Simple upsampler.
 
@@ -29,6 +30,7 @@ class Upsampler(nn.Module):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
+        self.apply_dropout = apply_dropout
         self.layers = nn.Sequential()
 
         self.layers.append(
@@ -40,6 +42,8 @@ class Upsampler(nn.Module):
             )
         )
         self.layers.append(nn.InstanceNorm2d(num_features=self.filters))
+        if self.apply_dropout:
+            self.layers.append(nn.Dropout2d(0.5))
         self.layers.append(nn.LeakyReLU())
 
     def forward(self, input: torch.Tensor):
