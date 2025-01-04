@@ -13,8 +13,8 @@ class DiscriminatorLoss(nn.Module):
         super().__init__()
 
     def forward(self, real: torch.Tensor, generated: torch.Tensor):
-        real_loss = nn.BCEWithLogitsLoss(reduction="sum")(input=real, target=torch.ones_like(real))
-        generated_loss = nn.BCEWithLogitsLoss(reduction="sum")(input=generated, target=torch.zeros_like(generated))
+        real_loss = nn.BCEWithLogitsLoss(reduction="mean")(input=real, target=torch.ones_like(real))
+        generated_loss = nn.BCEWithLogitsLoss(reduction="mean")(input=generated, target=torch.zeros_like(generated))
         avg_discriminator_loss = (real_loss + generated_loss) / 2
 
         return avg_discriminator_loss
@@ -25,7 +25,7 @@ class GeneratorLoss(nn.Module):
         super().__init__()
 
     def forward(self, generated: torch.Tensor):
-        return nn.BCEWithLogitsLoss(reduction="sum")(input=generated, target=torch.ones_like(generated))
+        return nn.BCEWithLogitsLoss(reduction="mean")(input=generated, target=torch.ones_like(generated))
 
 
 class CycleLoss(nn.Module):
@@ -33,8 +33,9 @@ class CycleLoss(nn.Module):
         super().__init__()
 
     def forward(self, real: torch.Tensor, cycled: torch.Tensor, scale: float):
-        loss = (cycled - real).mean()
-        return loss * scale
+        loss = torch.abs(real-cycled).mean()  # ??? Consider why cycle loss is abs(real-cycled)
+        scaled_loss = loss * scale
+        return scaled_loss
 
 
 class IdentityLoss(nn.Module):
@@ -42,5 +43,6 @@ class IdentityLoss(nn.Module):
         super().__init__()
 
     def forward(self, real_image: torch.Tensor, same_image: torch.Tensor, scale: float):
-        loss = (same_image - real_image).mean()
-        return loss * scale
+        loss = torch.abs(real_image-same_image).mean()
+        scaled_loss = loss * 0.5 * scale
+        return scaled_loss

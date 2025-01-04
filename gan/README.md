@@ -7,3 +7,8 @@ You will need to have [Kaggle API](https://github.com/Kaggle/kaggle-api#api-cred
 
 ## Todo
 - [ ] Fix the plotting utility because the ImageDataset accessor now returns a Tensor.
+
+
+## Questions
+- ??? Consider why cycle loss is abs(real-cycled)?
+- ??? Consider why identity loss is also abs(real-same_image)?
