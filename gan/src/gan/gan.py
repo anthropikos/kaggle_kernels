@@ -6,6 +6,7 @@ from .generator import Generator
 from .discriminator import Discriminator
 from .loss import GeneratorLoss, DiscriminatorLoss, CycleLoss, IdentityLoss
 from .data import ImageDataLoader
+from .data_processing import normalize_image
 from pathlib import Path
 from typing import Union
 from sys import getsizeof
@@ -192,8 +193,8 @@ def train_one_batch(
     if not check_batch_size_eq(real_monet_batch, real_photo_batch):
         raise ValueError(f"Inputs are expected to have the same batch size, got real_monet_batch.size(): {real_monet_batch.size()}, real_photo_batch.size(): {real_photo_batch.size()}")
 
-    real_monet_batch = real_monet_batch.to(device=device)
-    real_photo_batch = real_photo_batch.to(device=device)
+    real_monet_batch = normalize_image(real_monet_batch).to(device=device)
+    real_photo_batch = normalize_image(real_photo_batch).to(device=device)
 
     # Forward pass to get the loss
     loss_dict = model(real_monet_batch, real_photo_batch)
