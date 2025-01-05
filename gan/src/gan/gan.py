@@ -5,7 +5,7 @@ from torch import nn
 from .generator import Generator
 from .discriminator import Discriminator
 from .loss import GeneratorLoss, DiscriminatorLoss, CycleLoss, IdentityLoss
-from .data import ImageDataLoader
+from .data import ImageDataset, ImageDataLoader
 from .data_processing import normalize_image
 from pathlib import Path
 from typing import Union
@@ -85,8 +85,8 @@ class CycleGAN(nn.Module):
         return {
             "monet_gen_loss": total_monet_gen_loss,
             "photo_gen_loss": total_photo_gen_loss,
-            "monet_disc_loss": monet_dis_loss,
-            "photo_disc_loss": photo_dis_loss,
+            "monet_dis_loss": monet_dis_loss,
+            "photo_dis_loss": photo_dis_loss,
         }
 
     def __input_check(self, input:torch.Tensor):
@@ -121,7 +121,10 @@ def evaluate_model():
 def checkpoint_save(epoch:int, 
                     save_path:Union[str, Path],
                     model:nn.Module, 
-                    optimizer:torch.optim.Optimizer,
+                    monet_gen_optim:torch.optim.Optimizer,
+                    photo_gen_optim:torch.optim.Optimizer,
+                    monet_dis_optim:torch.optim.Optimizer,
+                    photo_dis_optim:torch.optim.Optimizer,
                     loss_tracker:dict,
                     ):
     filename = f"torch_epoch_{epoch}.checkpoint"
@@ -131,63 +134,75 @@ def checkpoint_save(epoch:int,
     dict_to_serialize = {
         "epoch": epoch, 
         "model_state_dict": model.state_dict(),
-        "optimizer": optimizer.state_dict(),
+        "monet_gen_optim":monet_gen_optim.state_dict(),
+        "photo_gen_optim":photo_gen_optim.state_dict(),
+        "monet_dis_optim":monet_dis_optim.state_dict(),
+        "photo_dis_optim":photo_dis_optim.state_dict(),
         "loss_tracker": loss_tracker,
     }
     torch.save(dict_to_serialize, save_path)
-
     return dict_to_serialize
 
 def check_batch_size_eq(real_monet_batch:torch.Tensor, real_photo_batch:torch.Tensor) -> bool:
     return real_monet_batch.size()[0] == real_photo_batch.size()[0]
 
+
 def train_one_epoch(
         monet_dataloader: ImageDataLoader,
         photo_dataloader: ImageDataLoader,
-        model: nn.Module,
-        optimizer: torch.optim.Optimizer,
+        model: CycleGAN,
+        monet_gen_optim:torch.optim.Optimizer,
+        photo_gen_optim:torch.optim.Optimizer,
+        monet_dis_optim:torch.optim.Optimizer,
+        photo_dis_optim:torch.optim.Optimizer,
         device:torch.cuda.device = torch.device("cpu"),
     ):
-        model = model.to(device=device)  # Make sure to update what model references to
-        model.train()  # Set model to training mode
-        loss_tracker = {
-            "monet_gen_loss_epoch_sum": 0,
-            "photo_gen_loss_epoch_sum": 0,
-            "monet_disc_loss_epoch_sum": 0,
-            "photo_disc_loss_epoch_sum": 0, 
-        }
-        num_batches = 0
+    """Train one epoch"""
+    model = model.to(device=device)  # Make sure to update what model references to
+    model.train()  # Set model to training mode
+    loss_tracker = {
+        "monet_gen_loss_epoch_sum": 0,
+        "photo_gen_loss_epoch_sum": 0,
+        "monet_dis_loss_epoch_sum": 0,
+        "photo_dis_loss_epoch_sum": 0, 
+    }
+    num_batches = 0
 
-        # Train the model one batch at a time
-        for idx_batch, (real_monet_batch, real_photo_batch) in tqdm(enumerate(zip(monet_dataloader, photo_dataloader)), desc="Training...", unit="batch"):
-            
-            # print(f"Training {idx_batch}-th batch...")
-
-            # Forward pass and get loss dict
-            loss_dict = train_one_batch(
-                real_monet_batch=real_monet_batch, 
-                real_photo_batch=real_photo_batch,
-                model = model,
-                optimizer = optimizer,
-                device=device)
-
-            # Update loss tracker - Make sure to not accumulate history
-            # https://pytorch.org/docs/stable/notes/faq.html
-            for key in loss_dict:
-                loss_tracker[f"{key}_epoch_sum"] += loss_dict[key].item()  # Python number thus detached from comp graph
-            num_batches += 1
+    # Train the model one batch at a time
+    for idx_batch, (real_monet_batch, real_photo_batch) in tqdm(enumerate(zip(monet_dataloader, photo_dataloader)), desc="Training...", unit="batch"):
         
-        output = {"loss_tracker": loss_tracker, 
-                "num_batches": num_batches}
-        
-        return output
+        # print(f"Training {idx_batch}-th batch...")
 
+        # Forward pass and get loss dict
+        loss_dict = train_one_batch(
+            real_monet_batch=real_monet_batch, 
+            real_photo_batch=real_photo_batch,
+            model = model,
+            monet_gen_optim=monet_gen_optim,
+            photo_gen_optim=photo_gen_optim,
+            monet_dis_optim=monet_dis_optim,
+            photo_dis_optim=photo_dis_optim,
+            device=device)
+
+        # Update loss tracker - Make sure to not accumulate history
+        # https://pytorch.org/docs/stable/notes/faq.html
+        for key in loss_dict:
+            loss_tracker[f"{key}_epoch_sum"] += loss_dict[key].item()  # Python number thus detached from comp graph
+        num_batches += 1
+    
+    loss_tracker = {"loss_tracker": loss_tracker, 
+            "num_batches": num_batches}
+    
+    return loss_tracker
 
 def train_one_batch(
         real_monet_batch: torch.Tensor, 
         real_photo_batch: torch.Tensor,
         model: nn.Module,
-        optimizer: torch.optim.Optimizer,
+        monet_gen_optim:torch.optim.Optimizer,
+        photo_gen_optim:torch.optim.Optimizer,
+        monet_dis_optim:torch.optim.Optimizer,
+        photo_dis_optim:torch.optim.Optimizer,
         device:torch.cuda.device
         ):
 
@@ -199,11 +214,98 @@ def train_one_batch(
 
     # Forward pass to get the loss
     loss_dict = model(real_monet_batch, real_photo_batch)
-    combined_loss = torch.zeros((),device=device)
-    for loss_name, loss_value in loss_dict.items():
-        combined_loss += loss_value
+
+    # Backprop: Monet gen
+    loss = loss_dict["monet_gen_loss"]
+    optimizer = monet_gen_optim
     optimizer.zero_grad()
-    combined_loss.backward()
+    loss.backward(retain_graph=True)
     optimizer.step()
 
+    # Backprop: Photo gen
+    loss = loss_dict["photo_gen_loss"]
+    optimizer = photo_gen_optim
+    optimizer.zero_grad()
+    loss.backward(retain_graph=True)
+    optimizer.step()
+
+    # Backprop: Monet dis
+    loss = loss_dict["monet_dis_loss"]
+    optimizer = monet_dis_optim
+    optimizer.zero_grad()
+    loss.backward(retain_graph=True)
+    optimizer.step()
+
+    # Backprop: Photo dis
+    loss = loss_dict["photo_dis_loss"]
+    optimizer = photo_dis_optim
+    optimizer.zero_grad()
+    loss.backward(retain_graph=True)
+    optimizer.step()
+    
     return loss_dict
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def training_loop(monet_data_dir:Union[str, Path], photo_data_dir:Union[str,Path], epochs:int=10, save_checkpoint:bool=False, checkpoint_data_dir: Union[str, Path]=None) -> CycleGAN:
+    if save_checkpoint & checkpoint_data_dir is None:
+        raise ValueError(f"Checkpoint data directory has to be provided if save_checkpoint is True.")
+
+    # Determine the device
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    print( torch.cuda.get_device_properties(device) )
+
+    # Create the model and optimizers
+    model = CycleGAN()
+    monet_gen_optim = torch.optim.Adam(model.monet_gen.parameters(), lr=2e-4, betas=(0.5, 0.999))
+    photo_gen_optim = torch.optim.Adam(model.photo_gen.parameters(), lr=2e-4, betas=(0.5, 0.999))
+    monet_dis_optim = torch.optim.Adam(model.monet_dis.parameters(), lr=2e-4, betas=(0.5, 0.999))
+    photo_dis_optim = torch.optim.Adam(model.photo_dis.parameters(), lr=2e-4, betas=(0.5, 0.999))
+
+    # Get the data
+
+    monet_dataset = ImageDataset(data_dir=monet_data_dir)
+    photo_dataset = ImageDataset(data_dir=photo_data_dir)
+
+    monet_dataloader = ImageDataLoader(monet_dataset)  # Auto shuffle at each epoch
+    photo_dataloader = ImageDataLoader(photo_dataset)  # Auto shuffle at each epoch
+
+    ## Train through the epochs
+    for idx_epoch in range(epochs):
+        loss_tracker = train_one_epoch(
+            monet_dataloader=monet_dataloader, 
+            photo_dataloader=photo_dataloader,
+            model=model,
+            monet_gen_optim=monet_gen_optim, 
+            photo_gen_optim=photo_gen_optim,
+            monet_dis_optim=monet_dis_optim,
+            photo_dis_optim=photo_dis_optim,
+            device=device
+        )
+
+        if save_checkpoint & idx_epoch%2==0:
+            _ = checkpoint_save(
+                epoch=idx_epoch, 
+                save_path=checkpoint_data_dir, 
+                model = model,
+                monet_gen_optim=monet_gen_optim, 
+                photo_gen_optim=photo_gen_optim, 
+                monet_dis_optim=monet_dis_optim, 
+                photo_dis_optim=photo_dis_optim,
+                loss_tracker=loss_tracker,
+                )
+    return

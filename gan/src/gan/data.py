@@ -62,6 +62,7 @@ class ImageDataLoader(DataLoader):
             dataset=dataset, 
             batch_size=10, 
             num_workers=2, 
+            shuffle=True,
             drop_last=True,  # Ensures that all outputs have same batch sizes
         )
         return
