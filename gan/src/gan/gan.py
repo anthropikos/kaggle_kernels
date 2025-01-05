@@ -216,6 +216,7 @@ def train_one_batch(
     loss_dict = model(real_monet_batch, real_photo_batch)
 
     # Backprop: Monet gen
+    print("Backprop 1")
     loss = loss_dict["monet_gen_loss"]
     optimizer = monet_gen_optim
     optimizer.zero_grad()
@@ -223,6 +224,7 @@ def train_one_batch(
     optimizer.step()
 
     # Backprop: Photo gen
+    print("Backprop 2")
     loss = loss_dict["photo_gen_loss"]
     optimizer = photo_gen_optim
     optimizer.zero_grad()
@@ -230,6 +232,7 @@ def train_one_batch(
     optimizer.step()
 
     # Backprop: Monet dis
+    print("Backprop 3")
     loss = loss_dict["monet_dis_loss"]
     optimizer = monet_dis_optim
     optimizer.zero_grad()
@@ -237,6 +240,7 @@ def train_one_batch(
     optimizer.step()
 
     # Backprop: Photo dis
+    print("Backprop 4")
     loss = loss_dict["photo_dis_loss"]
     optimizer = photo_dis_optim
     optimizer.zero_grad()
@@ -262,7 +266,7 @@ def train_one_batch(
 
 
 def training_loop(monet_data_dir:Union[str, Path], photo_data_dir:Union[str,Path], epochs:int=10, save_checkpoint:bool=False, checkpoint_data_dir: Union[str, Path]=None) -> CycleGAN:
-    if save_checkpoint & checkpoint_data_dir is None:
+    if (save_checkpoint) & (checkpoint_data_dir is None):
         raise ValueError(f"Checkpoint data directory has to be provided if save_checkpoint is True.")
 
     # Determine the device
