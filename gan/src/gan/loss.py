@@ -54,12 +54,29 @@ class CycleLoss(nn.Module):
 
         The cycle loss evaluates the real image against the cycled image where
         the real image could be either monet or photo and the cycled image could
-        be either a cycled monet or cycled photo. A cycled monet is created from
+        be either a cycled monet or cycled photo.
+        
+        A cycled monet is created from a real monet to a generated photo using
+        the photo generator, from the generated photo to a generated monet with
+        the monet generator, thus the entire computation graph it utilized both 
+        the photo generator and the monet generator.
+
+        A cycled photo is created from a real photo to a generated monet using a 
+        monet generator, from a generated monet to a generated photo using the 
+        photo generator, thus the entire computation grpah it utilized both the
+        monet generator and the photo generator.
         
         """
         super().__init__()
 
     def forward(self, real: torch.Tensor, cycled: torch.Tensor, scale: float):
+        """Callable implementation.
+        
+        Args:
+            real (torch.Tensor): The real or original image.
+            cycled (torch.Tensor): The image that has been cycle generated.
+            scale (float): Loss metric scaling factor.
+        """
         loss = torch.abs(real-cycled).mean()  # ??? Consider why cycle loss is abs(real-cycled)
         scaled_loss = loss * scale
         return scaled_loss
