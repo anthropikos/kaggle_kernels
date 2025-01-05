@@ -61,8 +61,9 @@ class CycleGAN(nn.Module):
         )  # Generator trying to make photo_dis output all 1s indicating a real photo
 
         # Evaluate loss - cycled
-        total_cycle_loss = CycleLoss()(real_monet, cycled_monet, self.cycle) + CycleLoss()(
-            real_photo, cycled_photo, self.cycle
+        total_cycle_loss = (
+            CycleLoss()(real_monet, cycled_monet, self.cycle) 
+            + CycleLoss()(real_photo, cycled_photo, self.cycle)
         )
 
         # Evaluate loss - generator
