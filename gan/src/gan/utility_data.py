@@ -5,15 +5,17 @@ from PIL import Image
 from pathlib import Path
 
 def map_rgb_to_tanh(image:torch.Tensor):
-    """Normalizes the image from the [0,255] range to [-1, 1] scale."""
-    image = image.to(dtype=torch.float32)  # In case the image isn't in this dtype
+    """Maps the image from RGB [0,255] range to tanh [-1, 1] range."""
+    image = image
     image = image / (255/2) - 1
+    image = image.to(dtype=torch.float32)
     return image
 
 def map_tanh_to_rgb(image:torch.Tensor):
     """Map from the tanh range to RGB range."""
-    image = image.to(dtype=torch.float32)  # Just in case it is the wrong dtype
+    image = image
     image = (image+1) * (255/2)
+    image = image.to(torch.uint8)
     return image
 
 def scale_image(img_path: Union[str, Path], scale: float) -> Image:
