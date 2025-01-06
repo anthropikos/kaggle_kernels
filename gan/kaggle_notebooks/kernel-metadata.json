@@ -1,0 +1,19 @@
+{
+  "id": "anthonyylee/gan-monet-generator",
+  "id_no": 74172731,
+  "title": "GAN Monet Generator",
+  "code_file": "gan_monet_generator.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [],
+  "dataset_sources": [],
+  "kernel_sources": [],
+  "competition_sources": [
+    "gan-getting-started"
+  ],
+  "model_sources": []
+}
