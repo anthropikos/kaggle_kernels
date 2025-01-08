@@ -1,11 +1,13 @@
 # README and Notes
 
+## Start here!
+This is the project folder of my implementation of a CycleGAN model to participate in the Kaggle challenge. [Click here to start at the project write-up!](./notebooks/0_main_notebook.ipynb)
+
 ## Download the dataset
 
 Use the shell script in the `data/` directory to download and unzip the dataset.
 
 You will need to have [Kaggle API](https://github.com/Kaggle/kaggle-api#api-credentials) setup. Follow [this documentation](https://www.kaggle.com/docs/api#getting-started-installation-&-authentication) to setup Kaggle API.
-
 
 ## Todo
 
@@ -22,7 +24,6 @@ You will need to have [Kaggle API](https://github.com/Kaggle/kaggle-api#api-cred
 
 - ??? Consider why cycle loss is abs(real-cycled)?
 - ??? Consider why identity loss is also abs(real-same_image)?
-
 
 ## Notes
 

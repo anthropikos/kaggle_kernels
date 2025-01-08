@@ -9,19 +9,22 @@ import torch
 from gan.gan import CycleGAN
 from torchvision.transforms import ToPILImage
 import warnings
+from matplotlib.figure import Figure
 
 
-def image_preview(dataset: Dataset, row: int, col: int) -> mpl.figure.Figure:
+def image_preview(dataset: Dataset, row: int, col: int, suptitle:str=None) -> mpl.figure.Figure:
     fig, axs = plt.subplots(row, col, figsize=(10, 10))
     axs = axs.flatten()
+    converter = ToPILImage()
 
     for i in range(row * col):
         ax = axs[i]
         idx = np.random.randint(low=0, high=len(dataset))
-        img = dataset[idx]
+        img = converter( dataset[idx] )
         ax.imshow(img)
         ax.set_axis_off()
 
+    fig.suptitle(f"{suptitle}")
     fig.tight_layout()
     return fig
 
@@ -68,7 +71,7 @@ def plot_before_after(real_tensor:torch.Tensor, generated_tensor:torch.Tensor, s
     fig.tight_layout()
     return fig
     
-def plot_different_dtypes(image:torch.Tensor) -> mpl.figure.Figure:
+def plot_different_dtypes(image:torch.Tensor) -> Figure:
     """Plots images when converted to different dtypes.
 
     Args:
