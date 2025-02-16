@@ -12,16 +12,12 @@ import lightning as L
 
 
 class Compressor(nn.Module):
-    def __init__(self, n_channels: int, amp_scalar: float = 0.0):
+    def __init__(self, n_channels: int, amp: float = 0.0):
         """Sigmoid function that compresses the data range.
         
         This custom non-linear compression operation is able to reduce the 
         inference-time computational footprint of models while minimally 
         compromising on decoding performance (Rodriguez et al., 2023).
-
-        When `amp_scalar` is at the default 0, the learnable
-        parameter is effectively not-learnable because the updated value will 
-        not have an effect due to being multiplied by zero.
 
         Rodriguez, F., He, S., & Tan, H. (2023). The potential of 
         convolutional neural networks for identifying neural states based on 
@@ -31,20 +27,16 @@ class Compressor(nn.Module):
 
         """
         super().__init__()
-
-        self.amp_restriction_factor = nn.Parameter(
-            amp_scalar 
-            * torch.randn(1, n_channels, requires_grad=True)  # Learnable parmaeter
-        )
-        self.amp_restriction_factor = torch.exp(self.amp_restriction_factor)
+        self.slope = nn.Parameter(amp * torch.randn(1, n_channels, 1))
 
     def forward(self, x):
-        eps = 1e-8  # Stabilizer to prevent division by zero
+        eps = 1e-8
+        slope_ = torch.exp(self.slope)
 
         return (
             torch.sign(x)
-            * torch.log(torch.abs(x) * self.amp_restriction_factor + 1.0)
-            / (torch.log(self.amp_restriction_factor + 1.0) + eps)
+            * torch.log(torch.abs(x) * slope_ + 1.0)
+            / (torch.log(slope_ + 1.0) + eps)
         )
 
 
@@ -54,85 +46,121 @@ class CNN1d(nn.Module):
 
     def __init__(
         self,
+        *,
         n_channels: int = 1,
-        n_out: int = 1,
         n_hidden: int = 45,
         depth: int = 7,
-        kernel_size: int = 25,  # 35
+        kernel_size: int = 32,
         stride: int = 1,
-        compress: bool = True,
+        compress_before_conv: bool = False,
     ):
 
         super().__init__()
+
         self.n_hidden = n_hidden
 
-        norm = nn.BatchNorm1d
-        affine = True  # Affine allows for beta and gamma in the formula to be learnable parameters - see affine transformation
+        norm_layer_constructor = nn.BatchNorm1d
+        compressor_layer = Compressor(n_channels=n_channels)
+        affine = True
 
-        # Convolution layers - Feature extraction
-        self.convolutional_layers = [
-            norm(n_channels, affine=affine) if compress else nn.Identity(),    # Initial normalization layer
-            Compressor(n_channels) if compress else nn.Identity(),
-            norm(n_channels, affine=affine),
-            nn.Conv1d(n_channels, self.n_hidden, kernel_size, padding="same"), # Initial Convolution
-            nn.SiLU(),                                                         # Nonlinearity
-            norm(self.n_hidden, affine=affine),                                # Normalization               
-        ]
-
-        for _ in range(depth - 1):  # One conv layer already above
-            self.convolutional_layers.extend(
+        # Build convolution layers
+        holder_conv_layers = []
+        for idx_layer in range(depth):
+            holder_conv_layers.extend(
                 [
-                    Compressor(self.n_hidden) if compress else nn.Identity(),
-                    nn.Conv1d(
-                        self.n_hidden,
-                        self.n_hidden,
-                        kernel_size,
+                    norm_layer_constructor(self.n_hidden, affine=affine)            # Initial normalization 
+                        if idx_layer==0 else nn.Identity(),                         # Only at the beginning
+                    Compressor(n_channels=n_channels)                               # Compress value range. TODO: Figure out what does the compressor does
+                        if (compress_before_conv & (idx_layer==0)) else nn.Identity(),
+                    Compressor(n_channels=self.n_hidden)                            # Compress value range. TODO: Figure out what does the compressor does
+                        if (compress_before_conv & (idx_layer!=0)) else nn.Identity(),
+                    nn.LazyConv1d(                                                  # 1D conv layer
+                        out_channels=self.n_hidden,
+                        kernel_size=kernel_size,
                         stride=stride,
                         padding="same" if stride == 1 else 0,
-                    ),  # Convolution
-                    nn.SiLU(),                                                 # Nonlinearity
-                    nn.AvgPool1d(2),                                           # Pooling Layer
-                    norm(self.n_hidden, affine=affine),                        # Normalization
+                    ),
+                    nn.SiLU(),                                                      # Swish activation function, better than ReLU
+                    nn.AvgPool1d(2),                                                # Pooling Layer
+                    norm_layer_constructor(self.n_hidden, affine=affine),           # Normalization
                 ]
             )
 
-        self.convolutions = nn.Sequential(*self.convolutional_layers)
-        
-        # Classifier - Single fully connected linear layer
-        self.classifier = nn.Sequential(
-            nn.AdaptiveAvgPool1d(1),
+        # Build classifier layers
+        holder_classifier_layers = [
+            nn.AdaptiveAvgPool1d(1),                                                # Maintains channel count, which is n_hidden
             nn.Flatten(),
-            nn.Linear(self.n_hidden, n_out),
-        )
+            nn.Linear(self.n_hidden, 1),
+            nn.Sigmoid(),                                                           # Probability
+        ]
+
+        # Combine all layers
+        self.conv_layers = nn.Sequential(*holder_conv_layers)
+        self.classifier = nn.Sequential(*holder_classifier_layers)
+
+        return
+
 
     def forward(self, x):
-        """the forward function defines how the input x is processed through the network layers
-
-        Input:
-        ------
-            x: Tensor of shape (n_batch, n_channels, n_samples [here 512 samples = 0.250 s at 2048 Hz])
-
-        Returns:
-        --------
-            Logits. Shape (n_batch, n_out)
         """
-        return self.classifier(self.convolutions(x))
+        Args
+        ====
+        x: Input of shape (n_batch, n_channels, data_length)
+
+        Returns
+        =======
+        Tensor of shape (n_batch, 1) indicating the probability of pathological state.
+        """
+        
+        conv_result = self.conv_layers(x)
+        probability = self.classifier(conv_result)
+
+        return probability
 
 
 class CNN1d_Lightning(L.LightningModule):
     def __init__(self):
+        super().__init__()
 
         self.model = CNN1d()
-        self.loss_module = nn.BCEWithLogitsLoss()
+        self.loss_module = nn.BCELoss(reduction="mean")
 
-    def forward(self, input, target):
-        return self.model(input, target)
-    
     def training_step(self, batch, batch_idx):
         input, target = batch
-        output = self(input, target)
-        # loss = self.loss_module()
-        return output
+        output = self(input)
+        loss = self.loss_module(output, target)
+
+        # Logs the mean loss for each epoch to the logger
+        self.log("train_loss", 
+                 loss, 
+                 on_step=True, 
+                 on_epoch=True, 
+                 prog_bar=True, 
+                 logger=True,
+                 reduce_fx=torch.mean,
+        )
+
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        input, target = batch
+        output = self.model(input)
+        loss = self.loss_module(output, target)
+        self.log("val_loss", loss)
+
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        input, target = batch
+        output = self.model(input)
+        loss = self.loss_module(output, target)
+        self.log("test_loss", loss)
+
+        return loss
+
+    def predict_step(self, batch):
+        input, target = batch
+        return self.model(input)
     
     def configure_optimizers(self):
         return torch.optim.AdamW(
