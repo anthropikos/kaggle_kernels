@@ -84,11 +84,13 @@ class EssentialTremorLFPDataset_Posture(Dataset):
             data_off = dataset["posture", "off"]
 
             (_, _, _, lfp_on, label_on) = dataset["posture", "on"]
+            
             # LFP data - Sliding window with memoryview
             lfp_on = lfp_on.mean(axis=0).squeeze()  # Average LFP across all DBS channels
-            lfp_on = torch.tensor(lfp_on).unfold(0, SAMPLING_RATE, 1)
+            lfp_on = torch.tensor(lfp_on, dtype=torch.float32).unfold(0, SAMPLING_RATE, 1)
+            
             # Label data
-            label_on = torch.tensor(label_on).to(torch.double).unfold(0, SAMPLING_RATE, 1).mean(dim=1, keepdim=False)
+            label_on = torch.tensor(label_on, dtype=torch.float32).unfold(0, SAMPLING_RATE, 1).mean(dim=1, keepdim=False)
             
             self.holder_lfp.append(lfp_on)
             self.holder_label.append(label_on)
@@ -109,8 +111,10 @@ class EssentialTremorLFPDataset_Posture(Dataset):
             raise IndexError(f"Index out of range, expect index to be between 0-{len(self)-1} inclusive.")
         list_idx, item_idx = self.__determine_list_and_item_idx(idx)
         
-        lfp = self.holder_lfp[list_idx][item_idx]
-        label = self.holder_label[list_idx][item_idx]
+        lfp = self.holder_lfp[list_idx][item_idx].reshape(shape=(1, -1))            # 1x channel dimension
+        label = self.holder_label[list_idx][item_idx].unsqueeze(0)                  # Add new dimension, returns a view
+        # label = self.holder_label[list_idx][item_idx][None]                       # Add new dimension, returns a view
+
         return lfp, label
         
     def __len__(self):

@@ -59,16 +59,12 @@ class CNN1d(nn.Module):
 
         self.n_hidden = n_hidden
 
-        norm_layer_constructor = nn.BatchNorm1d
-        compressor_layer = Compressor(n_channels=n_channels)
-        affine = True
-
         # Build convolution layers
         holder_conv_layers = []
         for idx_layer in range(depth):
             holder_conv_layers.extend(
                 [
-                    norm_layer_constructor(self.n_hidden, affine=affine)            # Initial normalization 
+                    nn.BatchNorm1d(n_channels, affine=True)            # Initial normalization 
                         if idx_layer==0 else nn.Identity(),                         # Only at the beginning
                     Compressor(n_channels=n_channels)                               # Compress value range. TODO: Figure out what does the compressor does
                         if (compress_before_conv & (idx_layer==0)) else nn.Identity(),
@@ -82,7 +78,7 @@ class CNN1d(nn.Module):
                     ),
                     nn.SiLU(),                                                      # Swish activation function, better than ReLU
                     nn.AvgPool1d(2),                                                # Pooling Layer
-                    norm_layer_constructor(self.n_hidden, affine=affine),           # Normalization
+                    nn.BatchNorm1d(self.n_hidden, affine=True),           # Normalization
                 ]
             )
 
@@ -111,7 +107,7 @@ class CNN1d(nn.Module):
         =======
         Tensor of shape (n_batch, 1) indicating the probability of pathological state.
         """
-        
+
         conv_result = self.conv_layers(x)
         probability = self.classifier(conv_result)
 
@@ -125,7 +121,11 @@ class CNN1d_Lightning(L.LightningModule):
         self.model = CNN1d()
         self.loss_module = nn.BCELoss(reduction="mean")
 
+    def forward(self, x):
+        return self.model(x)
+
     def training_step(self, batch, batch_idx):
+
         input, target = batch
         output = self(input)
         loss = self.loss_module(output, target)
