@@ -15,6 +15,7 @@ from torch.utils.data import Dataset, DataLoader, IterableDataset, random_split
 from collections import namedtuple
 import lightning as L
 from tqdm import tqdm
+import os
 
 # DATA_DIR = Path("../data/essential_tremor").resolve()  # This doesn't work because it would be relative to where the interpreter is opened.
 DATA_DIR = Path(__file__).parent / Path("../data/essential_tremor") # A hack and not ideal  TODO: Fix this data dir hack.
@@ -136,13 +137,19 @@ class EssentialTremorLFPDataset_Posture(Dataset):
 
 
 class EssentialTremorLFPDataset_Posture_Lightning(L.LightningDataModule):
-    def __init__(self, batch_size:int=int(2**10)):
+    def __init__(self, batch_size:int=None):
         """PyTorch Lightning wrapper for the PyTorch Dataset wrapper dataset."""
         super().__init__()
 
+        if batch_size is None:
+            batch_size = 200
+
         if not isinstance(batch_size, int): 
             raise TypeError(f"`batch_size` is expected to be an `int`, got {type(batch_size)}")
+
         self.batch_size = batch_size
+
+        self.num_workers = int(os.cpu_count() // 2)
 
         self.all_data = EssentialTremorLFPDataset_Posture()
         self.holdout_set, temp = random_split(self.all_data, [.1, .9])
@@ -155,10 +162,22 @@ class EssentialTremorLFPDataset_Posture_Lightning(L.LightningDataModule):
     # TODO: Figure out what the LightningModule.setup() does
 
     def train_dataloader(self):
-        return DataLoader(self.train_set, batch_size=self.batch_size)               # TODO: Check worker number to specify
+        return DataLoader(
+            self.train_set, 
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            )               # TODO: Check worker number to specify
     
     def val_dataloader(self):
-        return DataLoader(self.validation_set, batch_size=self.batch_size)          # TODO: Check worker number to specify
+        return DataLoader(
+            self.validation_set,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            )          # TODO: Check worker number to specify
     
     def test_dataloader(self):
-        return DataLoader(self.holdout_set, batch_size=self.batch_size)             # TODO: Check worker number to specify
+        return DataLoader(
+            self.holdout_set,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            )             # TODO: Check worker number to specify
