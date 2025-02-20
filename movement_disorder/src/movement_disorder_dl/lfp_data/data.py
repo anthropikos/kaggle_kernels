@@ -149,7 +149,7 @@ class EssentialTremorLFPDataset_Posture_Lightning(L.LightningDataModule):
 
         self.batch_size = batch_size
 
-        self.num_workers = int(os.cpu_count() // 2)
+        self.num_workers = int(os.cpu_count() // 2) if int(os.cpu_count() // 2) > 1 else 1
 
         self.all_data = EssentialTremorLFPDataset_Posture()
         self.holdout_set, temp = random_split(self.all_data, [.1, .9])
@@ -166,18 +166,18 @@ class EssentialTremorLFPDataset_Posture_Lightning(L.LightningDataModule):
             self.train_set, 
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            )               # TODO: Check worker number to specify
+            )
     
     def val_dataloader(self):
         return DataLoader(
             self.validation_set,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            )          # TODO: Check worker number to specify
+            )
     
     def test_dataloader(self):
         return DataLoader(
             self.holdout_set,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            )             # TODO: Check worker number to specify
+            )
