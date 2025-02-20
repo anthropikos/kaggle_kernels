@@ -18,7 +18,7 @@ from tqdm import tqdm
 import os
 
 # DATA_DIR = Path("../data/essential_tremor").resolve()  # This doesn't work because it would be relative to where the interpreter is opened.
-DATA_DIR = Path(__file__).parent / Path("../data/essential_tremor") # A hack and not ideal  TODO: Fix this data dir hack.
+DATA_DIR = Path(__file__).parent / Path("../../../data/essential_tremor") # A hack and not ideal  TODO: Fix this data dir hack.
 PATIENT_NUM_RANGE = range(1, 9)
 SAMPLING_RATE = 2048  # 2048 Hz according to the dataset
 LABEL_ON_THRESHOLD = 0.25 # Percentage of number of YES labels in window to be considered pathological
