@@ -19,14 +19,26 @@
 # 
 #         output = model(input)
 
-from src.movement_disorder_dl.model import CNN1d
-from src.movement_disorder_dl.lfp_data import EssentialTremorLFPDataset_Posture
-from torch.utils.data import DataLoader
+import lightning as L
+
+from movement_disorder_dl.lfp_data import EssentialTremorLFPDataset_Posture_Lightning
+from movement_disorder_dl.model import CNN1d_Lightning
 
 def main():
-    dataset = EssentialTremorLFPDataset_Posture()
 
-    print(dataset[0])
+    trainer = L.Trainer()
+    model = CNN1d_Lightning()
+    dataset = EssentialTremorLFPDataset_Posture_Lightning()
+    
+    
+    trainer.fit(model=model, datamodule=dataset)
+        
+
+
+
+
+
 
 if __name__ == "__main__":
     main()
+
