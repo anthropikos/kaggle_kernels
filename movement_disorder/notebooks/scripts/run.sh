@@ -3,14 +3,14 @@
 #SBATCH --account=ucb524_asc1
 #SBATCH --nodes=1
 #SBATCH --ntasks=8
-#SBATCH --time=12:00:00
+#SBATCH --gres=gpu:1
+#SBATCH --time=00:05:00
 #SBATCH --partition=aa100
 #SBATCH --output=movement_disorder-%j.out
 
 module purge
-module load anaconda
+module load miniforge
 
-PATH_REQUIREMENT_FILE='../environment.yml'
+mamba activate movement_disorder
 
-conda env create -f $PATH_REQUIREMENT_FILE
-
+python main.py
