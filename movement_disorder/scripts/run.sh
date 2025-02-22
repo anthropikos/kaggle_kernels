@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --account=ucb524_asc1
+#SBATCH --account=ucb-general
 #SBATCH --nodes=1
 #SBATCH --ntasks=8
 #SBATCH --gres=gpu:1
