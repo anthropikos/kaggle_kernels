@@ -23,7 +23,7 @@ def test():
 
 
 def main():
-    trainer = L.Trainer()
+    trainer = L.Trainer(max_epoch=100)
     model = CNN1d_Lightning()
     dataset = EssentialTremorLFPDataset_Posture_Lightning()
     
