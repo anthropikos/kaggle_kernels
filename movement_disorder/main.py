@@ -3,6 +3,7 @@
 from pathlib import Path
 from torch.utils.data import DataLoader
 import lightning as L
+from lightning.pytorch.plugins.environments import LightningEnvironment, SLURMEnvironment
 from src import movement_disorder_dl as md
 from src.movement_disorder_dl.lfp_data import EssentialTremorLFPDataset_Posture_Lightning
 from src.movement_disorder_dl.model import CNN1d_Lightning
@@ -23,7 +24,13 @@ def test():
 
 
 def main():
-    trainer = L.Trainer(max_epoch=100)
+
+    if SLURMEnvironment().detect():
+        # https://github.com/Lightning-AI/pytorch-lightning/issues/18650#issuecomment-1747669666
+        trainer = L.Trainer(max_epochs=100, plugins=[LightningEnvironment()])
+    else: 
+        trainer = L.Trainer(max_epoch=100)
+        
     model = CNN1d_Lightning()
     dataset = EssentialTremorLFPDataset_Posture_Lightning()
     
