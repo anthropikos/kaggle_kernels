@@ -23,7 +23,8 @@ def test():
 
 
 def main():
-    trainer = L.Trainer()
+    #trainer = L.Trainer()
+    trainer = L.Trainer(accelerator='gpu', devices=1, num_nodes=1, strategy='ddp')
     model = CNN1d_Lightning()
     dataset = EssentialTremorLFPDataset_Posture_Lightning()
     
