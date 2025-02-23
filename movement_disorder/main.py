@@ -34,15 +34,16 @@ def main():
 
     if SLURMEnvironment().detect():
         # https://github.com/Lightning-AI/pytorch-lightning/issues/18650#issuecomment-1747669666
-        trainer = L.Trainer(batch_size=1000, max_epochs=100, plugins=[LightningEnvironment()])
+        trainer = L.Trainer(max_epochs=100, plugins=[LightningEnvironment()])
         num_workers = determine_slurm_allocated_cpu_count()
+        dataset = EssentialTremorLFPDataset_Posture_Lightning(batch_size=2000, num_workers=num_workers)
 
     else: 
-        trainer = L.Trainer(batch_size=1000, max_epochs=100)
+        trainer = L.Trainer(max_epochs=100)
         num_workers = int(os.cpu_count()//2) if int(os.cpu_count()) > 2 else 1
+        dataset = EssentialTremorLFPDataset_Posture_Lightning(batch_size=1000, num_workers=num_workers)
 
     model = CNN1d_Lightning()
-    dataset = EssentialTremorLFPDataset_Posture_Lightning(num_workers=num_workers)
     
     trainer.fit(model=model, datamodule=dataset)
 
