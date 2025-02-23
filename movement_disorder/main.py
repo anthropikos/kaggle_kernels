@@ -34,11 +34,11 @@ def main():
 
     if SLURMEnvironment().detect():
         # https://github.com/Lightning-AI/pytorch-lightning/issues/18650#issuecomment-1747669666
-        trainer = L.Trainer(max_epochs=100, plugins=[LightningEnvironment()])
+        trainer = L.Trainer(batch_size=1000, max_epochs=100, plugins=[LightningEnvironment()])
         num_workers = determine_slurm_allocated_cpu_count()
 
     else: 
-        trainer = L.Trainer(max_epoch=100)
+        trainer = L.Trainer(batch_size=1000, max_epochs=100)
         num_workers = int(os.cpu_count()//2) if int(os.cpu_count()) > 2 else 1
 
     model = CNN1d_Lightning()
