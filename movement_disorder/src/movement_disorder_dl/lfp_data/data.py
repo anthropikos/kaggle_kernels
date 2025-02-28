@@ -142,7 +142,7 @@ class EssentialTremorLFPDataset_Posture_Lightning(L.LightningDataModule):
         super().__init__()
 
         if batch_size is None:
-            batch_size = 500
+            batch_size = 50
 
         if not isinstance(batch_size, int): 
             raise TypeError(f"`batch_size` is expected to be an `int`, got {type(batch_size)}")
