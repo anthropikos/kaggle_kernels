@@ -6,8 +6,8 @@ from torch.utils.data import DataLoader
 import lightning as L
 from lightning.pytorch.plugins.environments import LightningEnvironment, SLURMEnvironment
 from src import movement_disorder_dl as md
-from src.movement_disorder_dl.lfp_data import EssentialTremorLFPDataset_Posture_Lightning
-from src.movement_disorder_dl.model import CNN1d_Lightning
+from movement_disorder_dl.lfp_data import EssentialTremorLFPDataset_Posture_Lightning
+from movement_disorder_dl.model import CNN1d_Lightning
 
 
 def test():
