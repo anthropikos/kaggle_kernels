@@ -27,9 +27,9 @@ class EssentialTremorLFPDataset_Posture_Lightning(pl.LightningDataModule):
         
         return
 
-    # TODO: Figure out what the LightningModule.prepare_data() does
+    # TODO: (Later) Figure out what the LightningModule.prepare_data() does
 
-    # TODO: Figure out what the LightningModule.setup() does
+    # TODO: (Later) Figure out what the LightningModule.setup() does
 
     def train_dataloader(self):
         return DataLoader(

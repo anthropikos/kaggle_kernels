@@ -42,9 +42,10 @@ class Compressor(nn.Module):
 class CNN1d(nn.Module):
     """Convolutional Neural Network with 1D kernels"""
 
-    def __init__(self, config):
-
+    def __init__(self, config=None):
         super().__init__()
+        
+        if config is None: config = {}
         
         n_channels = config.get('n_channels', 1)
         n_hidden = config.get('n_hidden', 45)

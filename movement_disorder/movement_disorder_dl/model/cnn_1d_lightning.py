@@ -6,8 +6,10 @@ import pytorch_lightning as pl
 
 
 class CNN1d_Lightning(pl.LightningModule):
-    def __init__(self, config):
+    def __init__(self, config=None):
         super().__init__()
+        
+        if config is None: config = {}
 
         self.model = CNN1d(config=config)
         self.loss_module = nn.BCELoss(reduction="mean")
@@ -96,12 +98,13 @@ class CNN1d_Lightning(pl.LightningModule):
             
             "val_loss", 
             loss,
+            on_step=True,        # Log each step of the val_dataloader
             on_epoch=True,       # True by default for `validation_step` - https://lightning.ai/forums/t/understanding-logging-and-validation-step-validation-epoch-end/291/2
             reduce_fx='mean',    # Method param default - Explicitly stated for clarity
-            # on_step=True,      # Reports the result of each step of the val_dataloader
         )
 
         return loss
+    # TODO: (Later) Understand how the on_validation_epoch_end param `sync_dist` work to reduce metric across devices. - https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#log
 
     def test_step(self, batch, batch_idx):
         """Test step for the testing loop.
