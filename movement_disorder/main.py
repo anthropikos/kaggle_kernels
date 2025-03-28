@@ -54,7 +54,7 @@ def main():
 
 
 def tune():
-    from movement_disorder_dl.tuner.hyperparameter import tune_cnn_1d 
+    from movement_disorder_dl.tuner.hyperparameter_tuner import tune_cnn_1d 
 
     result_grid = tuner_cnn_1d()
 
