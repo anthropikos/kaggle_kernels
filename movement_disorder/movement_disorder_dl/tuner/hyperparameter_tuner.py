@@ -17,12 +17,13 @@ from ..data.lfp_data_lightning import EssentialTremorLFPDataset_Posture_Lightnin
 
 logger = logging.getLogger(__name__)
 
-def train_loop_per_worker(config, model=None, datamodule=None) -> None:
+def train_loop_per_worker(config, loader_batch_size=None, loader_num_workers=None) -> None:
     
-    if model is None: 
-        model = CNN1d_Lightning()
-    if datamodule is None: 
-        datamodule = EssentialTremorLFPDataset_Posture_Lightning()
+    model = CNN1d_Lightning(config=config)
+    datamodule = EssentialTremorLFPDataset_Posture_Lightning(
+        batch_size=loader_batch_size, 
+        num_workers=loader_num_workers
+    )
     
     lightning_trainer = pl.Trainer(
         devices='auto', 
@@ -42,9 +43,14 @@ def train_loop_per_worker(config, model=None, datamodule=None) -> None:
 
     return
     
-
+from functools import partial
 # TODO: (Later) Try to implement distributed tuning process such that I can tune in embarrasingly parallel way at least
 def tune_cnn_1d() -> ResultGrid:
+    
+    n_ray_train_workers = 1
+    n_cpu = 8
+    n_gpu = 1
+    loader_batch_size = 200
     
     # Parameter for scheduler
     scheduler_max_num_epoch = 3 # Would like to use 5 but that may result in too long of a tuning process
@@ -55,9 +61,9 @@ def tune_cnn_1d() -> ResultGrid:
     
     # Create the Ray Trainer
     scaling_config = ScalingConfig(
-        num_workers=1, 
-        use_gpu=True, 
-        resources_per_worker={'CPU': 8, 'GPU': 1},
+        num_workers=n_ray_train_workers, 
+        use_gpu=True if n_gpu > 0 else False, 
+        resources_per_worker={'CPU': n_cpu, 'GPU':  n_gpu},
     )
     run_config = RunConfig(
         #storage_path='./RayTune_logs',
@@ -69,7 +75,7 @@ def tune_cnn_1d() -> ResultGrid:
     )
 
     ray_trainer = TorchTrainer(
-        train_loop_per_worker=train_loop_per_worker,
+        train_loop_per_worker=partial(train_loop_per_worker, loader_batch_size=loader_batch_size, loader_num_workers=n_cpu),
         scaling_config=scaling_config, 
         run_config=run_config,
     )

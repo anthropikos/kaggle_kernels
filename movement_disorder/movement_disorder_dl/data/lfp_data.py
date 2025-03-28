@@ -91,11 +91,11 @@ class EssentialTremorLFPDataset_Posture(Dataset):
 
             (_, _, _, lfp_on, label_on) = dataset["posture", "on"]
             
-            # LFP data - Sliding window with memoryview
+            # LFP data - Sliding window with memoryview - Torch views avoid explicit copies of the data
             lfp_on = lfp_on.mean(axis=0).squeeze()  # Average LFP across all DBS channels
             lfp_on = torch.tensor(lfp_on, dtype=torch.float32).unfold(0, SAMPLING_RATE, 1)
             
-            # Label data
+            # Label data - Torch views avoid explicit copies of the data
             label_on = torch.tensor(label_on, dtype=torch.float32).unfold(0, SAMPLING_RATE, 1).mean(dim=1, keepdim=False)
             
             self.holder_lfp.append(lfp_on)

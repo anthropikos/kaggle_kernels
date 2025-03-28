@@ -6,19 +6,19 @@ import pytorch_lightning as pl
 
 
 class EssentialTremorLFPDataset_Posture_Lightning(pl.LightningDataModule):
-    def __init__(self, batch_size:int=None, num_workers:int=2):
+    def __init__(self, batch_size:int=None, num_workers:int=None):
         """PyTorch Lightning wrapper for the PyTorch Dataset wrapper dataset."""
         super().__init__()
 
         if batch_size is None:
             batch_size = 50
+        if num_workers is None: 
+            num_workers = 2
 
         if not isinstance(batch_size, int): 
             raise TypeError(f"`batch_size` is expected to be an `int`, got {type(batch_size)}")
 
         self.batch_size = batch_size
-
-        # self.num_workers = int(os.cpu_count() // 2) if int(os.cpu_count() // 2) > 1 else 1
         self.num_workers = num_workers
 
         self.all_data = EssentialTremorLFPDataset_Posture()
