@@ -11,17 +11,17 @@
 import torch
 import h5py
 from pathlib import Path
-from torch.utils.data import Dataset, DataLoader, IterableDataset, random_split
+from torch.utils.data import Dataset
 from collections import namedtuple
-import lightning as L
 from tqdm import tqdm
-import os
+
 
 # DATA_DIR = Path("../data/essential_tremor").resolve()  # This doesn't work because it would be relative to where the interpreter is opened.
 DATA_DIR = Path(__file__).parent / Path("../../../data/essential_tremor") # A hack and not ideal  TODO: Fix this data dir hack.
 PATIENT_NUM_RANGE = range(1, 9)
 SAMPLING_RATE = 2048  # 2048 Hz according to the dataset
 LABEL_ON_THRESHOLD = 0.25 # Percentage of number of YES labels in window to be considered pathological
+
 
 # For each patient get either pegboard/posture/pouring and on/off state
 class EssentialTremorPatientDataset():
@@ -134,51 +134,3 @@ class EssentialTremorLFPDataset_Posture(Dataset):
                     previous_range_end = self.range_map[list_idx - 1][-1]
                     item_idx = idx - previous_range_end - 1
                     return list_idx, item_idx
-
-
-class EssentialTremorLFPDataset_Posture_Lightning(L.LightningDataModule):
-    def __init__(self, batch_size:int=None, num_workers:int=2):
-        """PyTorch Lightning wrapper for the PyTorch Dataset wrapper dataset."""
-        super().__init__()
-
-        if batch_size is None:
-            batch_size = 50
-
-        if not isinstance(batch_size, int): 
-            raise TypeError(f"`batch_size` is expected to be an `int`, got {type(batch_size)}")
-
-        self.batch_size = batch_size
-
-        # self.num_workers = int(os.cpu_count() // 2) if int(os.cpu_count() // 2) > 1 else 1
-        self.num_workers = num_workers
-
-        self.all_data = EssentialTremorLFPDataset_Posture()
-        self.holdout_set, temp = random_split(self.all_data, [.1, .9])
-        self.train_set, self.validation_set = random_split(temp, [.7, .3])
-        
-        return
-
-    # TODO: Figure out what the LightningModule.prepare_data() does
-
-    # TODO: Figure out what the LightningModule.setup() does
-
-    def train_dataloader(self):
-        return DataLoader(
-            self.train_set, 
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            )
-    
-    def val_dataloader(self):
-        return DataLoader(
-            self.validation_set,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            )
-    
-    def test_dataloader(self):
-        return DataLoader(
-            self.holdout_set,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            )

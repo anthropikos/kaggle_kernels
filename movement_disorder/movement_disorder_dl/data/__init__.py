@@ -1,3 +1,4 @@
-# Anthony Lee 2025-02-07
-
-from .lfp_data import *
+from . import (
+    lfp_data_lightning,
+    lfp_data
+)

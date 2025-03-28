@@ -8,8 +8,6 @@
 
 import torch
 from torch import nn
-import lightning as L
-
 
 class Compressor(nn.Module):
     def __init__(self, n_channels: int, amp: float = 0.0):
@@ -44,18 +42,16 @@ class Compressor(nn.Module):
 class CNN1d(nn.Module):
     """Convolutional Neural Network with 1D kernels"""
 
-    def __init__(
-        self,
-        *,
-        n_channels: int = 1,
-        n_hidden: int = 45,
-        depth: int = 7,
-        kernel_size: int = 32,
-        stride: int = 1,
-        compress_before_conv: bool = False,
-    ):
+    def __init__(self, config):
 
         super().__init__()
+        
+        n_channels = config.get('n_channels', 1)
+        n_hidden = config.get('n_hidden', 45)
+        depth = config.get('depth', 7)
+        kernel_size = config.get('kernel_size', 32)
+        stride = config.get('stride', 1)
+        compress_before_conv = config.get('compress_before_conv', False)
 
         self.n_hidden = n_hidden
 
@@ -78,7 +74,7 @@ class CNN1d(nn.Module):
                     ),
                     nn.SiLU(),                                                      # Swish activation function, better than ReLU
                     nn.AvgPool1d(2),                                                # Pooling Layer
-                    nn.BatchNorm1d(self.n_hidden, affine=True),           # Normalization
+                    nn.BatchNorm1d(self.n_hidden, affine=True),                     # Normalization
                 ]
             )
 
@@ -112,59 +108,3 @@ class CNN1d(nn.Module):
         probability = self.classifier(conv_result)
 
         return probability
-
-
-class CNN1d_Lightning(L.LightningModule):
-    def __init__(self):
-        super().__init__()
-
-        self.model = CNN1d()
-        self.loss_module = nn.BCELoss(reduction="mean")
-
-    def forward(self, x):
-        return self.model(x)
-
-    def training_step(self, batch, batch_idx):
-
-        input, target = batch
-        output = self(input)
-        loss = self.loss_module(output, target)
-
-        # Logs the mean loss for each epoch to the logger
-        self.log("train_loss", 
-                 loss, 
-                 on_step=True, 
-                 on_epoch=True, 
-                 prog_bar=True, 
-                 logger=True,
-                 reduce_fx=torch.mean,
-        )
-
-        return loss
-    
-    def validation_step(self, batch, batch_idx):
-        input, target = batch
-        output = self.model(input)
-        loss = self.loss_module(output, target)
-        self.log("val_loss", loss)
-
-        return loss
-
-    def test_step(self, batch, batch_idx):
-        input, target = batch
-        output = self.model(input)
-        loss = self.loss_module(output, target)
-        self.log("test_loss", loss)
-
-        return loss
-
-    def predict_step(self, batch):
-        input, target = batch
-        return self.model(input)
-    
-    def configure_optimizers(self):
-        return torch.optim.AdamW(
-            params=self.model.parameters(),
-            lr=1e-3,
-            weight_decay=1e-8,
-        )

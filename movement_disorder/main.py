@@ -3,11 +3,15 @@
 import os
 from pathlib import Path
 from torch.utils.data import DataLoader
-import lightning as L
-from lightning.pytorch.plugins.environments import LightningEnvironment, SLURMEnvironment
-from src import movement_disorder_dl as md
-from movement_disorder_dl.data import EssentialTremorLFPDataset_Posture_Lightning
-from movement_disorder_dl.model import CNN1d_Lightning
+import pytorch_lightning as pl
+from pytorch_lightning.plugins.environments import LightningEnvironment, SLURMEnvironment
+import movement_disorder_dl as md
+from movement_disorder_dl.data.lfp_data_lightning import EssentialTremorLFPDataset_Posture_Lightning
+from movement_disorder_dl.model.cnn_1d_lightning import CNN1d_Lightning
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 
 def test():
@@ -34,12 +38,13 @@ def main():
 
     if SLURMEnvironment().detect():
         # https://github.com/Lightning-AI/pytorch-lightning/issues/18650#issuecomment-1747669666
-        trainer = L.Trainer(max_epochs=20, plugins=[LightningEnvironment()])
+        trainer = pl.Trainer(max_epochs=20, plugins=[LightningEnvironment()])
         num_workers = determine_slurm_allocated_cpu_count()
         dataset = EssentialTremorLFPDataset_Posture_Lightning(batch_size=500, num_workers=num_workers)
 
     else: 
-        trainer = L.Trainer(max_epochs=20)
+        # The trainer default parameter for `logger` is True and would use TensorBoard if installed, otherwise CSVLogger.
+        trainer = pl.Trainer(max_epochs=20)
         num_workers = int(os.cpu_count()//2) if int(os.cpu_count()) > 2 else 1
         dataset = EssentialTremorLFPDataset_Posture_Lightning(batch_size=500, num_workers=num_workers)
 
@@ -50,4 +55,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
