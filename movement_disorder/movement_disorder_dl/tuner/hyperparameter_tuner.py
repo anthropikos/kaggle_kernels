@@ -1,7 +1,7 @@
 # Use ray tune to tune hyperparameters: n_hidden, depth, kernel
 import logging
 from ray.train.lightning import (
-    RayDDPStrategy, 
+    #RayDDPStrategy, 
     RayLightningEnvironment,
     RayTrainReportCallback,
     prepare_trainer,
@@ -27,7 +27,7 @@ def train_loop_per_worker(config, model=None, datamodule=None) -> None:
     lightning_trainer = pl.Trainer(
         devices='auto', 
         accelerator='auto',
-        strategy=RayDDPStrategy(),
+        #strategy=RayDDPStrategy(),
         callbacks=[
             RayTrainReportCallback(),
         ],
@@ -37,7 +37,7 @@ def train_loop_per_worker(config, model=None, datamodule=None) -> None:
         enable_progress_bar=False,
     )
     
-    lightning_trainer = prepare_trainer(lightning_trainer)  # Prepare for distributed execution - https://docs.ray.io/en/latest/train/api/doc/ray.train.lightning.prepare_trainer.html
+    #lightning_trainer = prepare_trainer(lightning_trainer)  # Prepare for distributed execution - https://docs.ray.io/en/latest/train/api/doc/ray.train.lightning.prepare_trainer.html
     lightning_trainer.fit(model, datamodule)
 
     return
