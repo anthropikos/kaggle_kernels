@@ -230,8 +230,6 @@ dependencies:
   - pydantic
   - pydantic-core
   - pygments
-  - pyobjc-core
-  - pyobjc-framework-cocoa
   - pyopenssl
   - pyparsing
   - pysocks
