@@ -53,5 +53,13 @@ def main():
     trainer.fit(model=model, datamodule=dataset)
 
 
+def tune():
+    from movement_disorder_dl.tuner.hyperparameter import tune_cnn_1d 
+
+    result_grid = tuner_cnn_1d()
+
+    return result_grid
+
 if __name__ == "__main__":
-    main()
+#    main()
+    tune()
