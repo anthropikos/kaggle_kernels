@@ -60,12 +60,12 @@ def tune_cnn_1d() -> ResultGrid:
         resources_per_worker={'CPU': 4, 'GPU': 1},
     )
     run_config = RunConfig(
-        storage_path='./RayTune_logs',
+        #storage_path='./RayTune_logs',
         checkpoint_config=CheckpointConfig(
             num_to_keep=3,
             checkpoint_score_attribute='val_loss', 
             checkpoint_score_order='min',
-        )
+        ),
     )
 
     ray_trainer = TorchTrainer(
