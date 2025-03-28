@@ -1,3 +1,3 @@
 from . import (
-    hyperparam_tuner
+    hyperparameter_tuner
 )
