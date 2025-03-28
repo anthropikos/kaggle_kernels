@@ -1,5 +1,5 @@
 # Use ray tune to tune hyperparameters: n_hidden, depth, kernel
-
+import logging
 from ray.train.lightning import (
     RayDDPStrategy, 
     RayLightningEnvironment,
@@ -15,12 +15,14 @@ from ray.tune.schedulers import ASHAScheduler
 from ..model.cnn_1d_lightning import CNN1d_Lightning
 from ..data.lfp_data_lightning import EssentialTremorLFPDataset_Posture_Lightning
 
+logger = logging.getLogger(__name__)
+
 def train_loop_per_worker(config, model=None, datamodule=None) -> None:
     
     if model is None: 
-        model = CNN1d_Lightning
+        model = CNN1d_Lightning()
     if datamodule is None: 
-        datamodule = EssentialTremorLFPDataset_Posture_Lightning
+        datamodule = EssentialTremorLFPDataset_Posture_Lightning()
     
     lightning_trainer = pl.Trainer(
         devices='auto', 
