@@ -57,7 +57,7 @@ def tune_cnn_1d() -> ResultGrid:
     scaling_config = ScalingConfig(
         num_workers=1, 
         use_gpu=True, 
-        resources_per_worker={'CPU': 4, 'GPU': 1},
+        resources_per_worker={'CPU': 8, 'GPU': 1},
     )
     run_config = RunConfig(
         #storage_path='./RayTune_logs',
