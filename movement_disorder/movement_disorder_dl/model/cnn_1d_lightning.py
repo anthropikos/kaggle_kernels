@@ -136,6 +136,15 @@ class CNN1d_Lightning(pl.LightningModule):
         return loss
 
     def predict_step(self, batch):
+        """Prediction hook.
+        
+        Step function called during the module's `predict()` method call, which 
+        by default calls the `forward()` function and thus overridding allows
+        for additional functionalities [^1].
+        
+        Reference
+        [^1]: [Lightning documentation on `predict_step` hook](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.LightningModule.html#lightning.pytorch.core.LightningModule.predict_step) 
+        """
         input, target = batch
         output = self.model(input)
         
