@@ -257,6 +257,7 @@ dependencies:
   - rfc3986-validator
   - rpds-py
   - rsa
+  - scipy
   - send2trash
   - setproctitle
   - setuptools
@@ -268,6 +269,7 @@ dependencies:
   - soupsieve
   - stack_data
   - sympy
+  - tabulate
   - tensorboardx
   - terminado
   - tinycss2

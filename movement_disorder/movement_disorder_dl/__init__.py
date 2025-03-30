@@ -8,3 +8,5 @@ logger = logging.getLogger(__name__).addHandler(logging.NullHandler())
 from . import data
 from . import model
 from . import tuner
+from . import spectral
+from . import plotter
