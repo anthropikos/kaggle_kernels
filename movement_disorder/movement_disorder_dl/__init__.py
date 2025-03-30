@@ -10,3 +10,5 @@ from . import model
 from . import tuner
 from . import spectral
 from . import plotter
+from . import scripts
+from . import config
