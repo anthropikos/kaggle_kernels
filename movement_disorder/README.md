@@ -1,19 +1,9 @@
-# Outline
+# README
 
-Goal: End-to-end feature extraction to classify physiological vs pathological state
+For full report, see [the main notebook](notebooks/main_notebook.ipynb) (full collection of notebooks and source base is provided).
 
-Motivation: 
-- Capture the finer details such as waveform shape, sharpness for the determination of physio vs patho states because current methods calculates statistics that ignores such information.
-- Replicate the model and see if I can tweak it with my private dataset that has much lower sampling rate with similar performance.
+## Summary
+This project investigates the potential of using a deep learning model for end-to-end feature extraction of the LFP signal in patients with essential tremors, further extrapolating the features to other similar movement disorders such as Parkinson's Disease.
 
-Look out: 
-- Challenges on how to label the physio vs patho state on my private dataset.
-- Don't worry about other datasets and just focus on processing this set.
-
-Plan: 
-- Read and understand the structure of the data
-- Replicate model without lightning module
-- Implement train, test, and validation methods
-- Train the model and plot performance
-- Consider implementing RayTune for hyperparameter tuning
-
+## Result
+The model shows convergence in training-loss and validation-loss after 6 epochs. Further, investigation is needed to understand the feature extracted by each of the convolutional layers.
